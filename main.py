@@ -218,6 +218,7 @@ while True:
 
     # control playing line
     asyncio.run(ControlPlayState())
+
     # draw playing line
     pygame.draw.rect(screen, line.color, line.rect)
     # draw playing bar line
@@ -225,27 +226,6 @@ while True:
 
     # control play/pause/restart buttons
     asyncio.run(ControlTopButtons())
-    # for rect in sample_rect:
-    #     pygame.draw.rect(screen, (0, 66, 102), rect)
-    #     if line.rect.colliderect(rect) and states["isPlaying"]:
-    #         for sample in sample_list:
-    #             for pos in sample.rectsPos:
-    #                 if rect.x == 238 + pos * 16:
-    #                     print(rect.x, sample.rectsPos)
-    #                     sample.waveObj.play()
-        # if line.rect.colliderect(rect) and states["isPlaying"]:
-        #     if rect.y == 105:
-        #         kick.waveObj.play()
-        #     else:
-        #         snare.waveObj.play()
-    # for rect in sample_rects2:
-    #     pygame.draw.rect(screen, (0, 66, 102), rect)
-    #     if line.rect.colliderect(rect) and states["isPlaying"]:
-    #         sample2.play()
-    # for rect in sample_rects3:
-    #     pygame.draw.rect(screen, (0, 66, 102), rect)
-    #     if line.rect.colliderect(rect) and states["isPlaying"]:
-    #         hat.waveObj.play()
 
     # adding and removing rects
     for list in sample_rect:
