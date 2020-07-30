@@ -3,13 +3,14 @@ import sys
 from time import time, sleep
 import asyncio
 import simpleaudio
+from glob import glob
+from random import randint
 
 # config
 clock = pygame.time.Clock()
 pygame.init()
 pygame.display.set_caption('8Bar')
 screen = pygame.display.set_mode((1280, 720))
-# pygame.mixer.init(44100, 16, 2, 4096)
 
 
 class Object:
@@ -24,7 +25,6 @@ class Line(Object):
         self.position_x = position_x
 
 
-
 class Sample:
     def __init__(self, name):
         self.name = name
@@ -32,7 +32,8 @@ class Sample:
         self.layer = None
         self.waveObj = simpleaudio.WaveObject.from_wave_file(self.path)
         self.rectsPos = []
-
+        self.color = (randint(100,120),randint(150,250),randint(200,255))
+        self.rects_list = []
 
 # buttons
 play_button = pygame.Rect(590, 15, 30, 30)
@@ -61,23 +62,25 @@ right_mouse_button_clicked = False
 # fonts
 pygame.font.init()
 font = pygame.font.SysFont('calibri', 32)
+font_16 = pygame.font.SysFont('calibri', 16)
+font_24 = pygame.font.SysFont('calibri', 24)
 font_text = font.render("1.1", True, (153, 219, 255))
 
-kick = Sample('1.wav')
-kick.layer = 1
-snare = Sample('2.wav')
-snare.layer = 2
-hat = Sample('3.wav')
-hat.layer = 3
 
-sample_list = [kick, snare, hat]
-
+sample_list = []
+chosen_samples = []
 async def ControlPlayState():
     if states["isPlaying"]:
         if states["ended"]:
             states["ended"] = False
             states["isPlaying"] = True
-
+            line.rect.x = 238
+            line.position_x = 238
+            bar_line.rect.x = 238
+            bar_line.position_x = 238
+            states["actualSix"] = 1
+            states["actualBeats"] = 1
+            states["actualBars"] = 1
         line.position_x += 16
         line.rect.x += 16
         bar_line.position_x += 16
@@ -146,24 +149,89 @@ def ControlTimer():
     font_text = font.render(bar_str, True, (153, 219, 255))
     screen.blit(font_text, (230, 15))
 
-# sample_rects = []
-# for i in range (16):
-#     sample_rects.append(pygame.Rect(238+i*64, 105, 10, 10))
-#     sample_rects.append(pygame.Rect(302 + i * 128, 125, 10, 10))
 
-# sample_rects2 = []
-# for i in range (8):
-#     sample_rects2.append(pygame.Rect(302+i*128, 125, 10, 10))
+def ControlSampleSection():
+    # adding and removing rects
+    for i,s in enumerate(chosen_samples):
+        pygame.draw.rect(screen, s.color, pygame.Rect(238, 105 + i * 40, 1024, 40))
+        pygame.draw.rect(screen, s.color, pygame.Rect(238, 105+i*40, 1024, 40))
+        font_16_text = font_16.render(str(s.name), True, (0, 0, 0))
+        screen.blit(font_16_text, (240, 108 + i * 40))
+        for rect in s.rects_list:
+            pygame.draw.rect(screen, (0, 66, 102), rect)
+        # if clicked on rect
+            if CheckLeftMouseButtonCollision(rect) and left_mouse_button_clicked:
+                if rect not in s.rectsPos:
+                    s.rectsPos.append(rect)
+            if CheckLeftMouseButtonCollision(rect) and right_mouse_button_clicked:
+                if rect in s.rectsPos:
+                    s.rectsPos.remove(rect)
 
-# sample_rects3 = []
-# for i in range (16):
-#     sample_rects3.append(pygame.Rect(238+32+i*64, 145, 10, 10))
+    # displaying selected rects
+    for sample in chosen_samples:
+        for rect in sample.rectsPos:
+            pygame.draw.rect(screen, (255, 66, 102), rect)
 
-# creating rects displayed on screen
+    for sample in chosen_samples:
+        for rect in sample.rectsPos:
+            if line.rect.colliderect(rect) and states["isPlaying"]:
+                sample.waveObj.play()
+
+def ReadSamples():
+    # read samples from directory
+    sample_names = glob("./samples/*.wav")
+    for name in sample_names:
+        sample = Sample(name.split("\\")[-1])
+        sample.layer = len(sample_list) + 1
+        sample_list.append(sample)
+
+ReadSamples()
+
+
+def UpdateRects(deleted_sample):
+    samples_after_sample = []
+    j = None
+    for i,sample in enumerate(chosen_samples):
+        if sample == deleted_sample:
+            j = i
+    for i,sample in enumerate(chosen_samples):
+        if i > j:
+            for rect in sample.rects_list:
+                rect.y -= 40
+    print(samples_after_sample)
+
 sample_rect = []
-for j in range(len(sample_list)):
-    for i in range(64):
-        sample_rect.append([pygame.Rect(238 + i * 16, 105+j*20, 10, 10), i, j])
+
+
+def ChooseSamples():
+    sample_name_rects = []
+    global sample_rect
+    for i,sample in enumerate(sample_list):
+        rect = pygame.Rect(14,14 + i * 44, 202, 40)
+        pygame.draw.rect(screen, (33, 39, 48), rect)
+        sample_name_rects.append([rect, sample])
+        font_text = font_24.render(str(sample.name), True, (153, 219, 255))
+        sample.name_pos = (20, 20 + i * 44)
+        screen.blit(font_text, (20, 20 + i * 44))
+        if CheckLeftMouseButtonCollision(rect) and left_mouse_button_clicked:
+            if sample not in chosen_samples:
+                for i in range(64):
+                    sample.rects_list.append(pygame.Rect(238 + i * 16, 125 + len(chosen_samples) * 40, 10, 10))
+                chosen_samples.append(sample)
+        if CheckLeftMouseButtonCollision(rect) and right_mouse_button_clicked:
+            if sample in chosen_samples:
+                sample.rectsPos = []
+                UpdateRects(sample)
+                sample.rects_list = []
+                chosen_samples.remove(sample)
+
+
+    for list in sample_name_rects:
+        if list[1] in chosen_samples:
+            pygame.draw.rect(screen,(61, 72, 88), list[0])
+            font_text = font_24.render(str(list[1].name), True, (153, 219, 255))
+            screen.blit(font_text, list[1].name_pos)
+
 
 while True:
     screen.fill((25, 29, 36))
@@ -216,6 +284,9 @@ while True:
     # draw main middle container
     pygame.draw.rect(screen, (33, 39, 48), pygame.Rect(238, 100, 1024, 600))
 
+    # draw sample rects and control selecting
+    ControlSampleSection()
+
     # control playing line
     asyncio.run(ControlPlayState())
 
@@ -227,34 +298,10 @@ while True:
     # control play/pause/restart buttons
     asyncio.run(ControlTopButtons())
 
-    # adding and removing rects
-    for list in sample_rect:
-        pygame.draw.rect(screen, (0, 66, 102), list[0])
-        if CheckLeftMouseButtonCollision(list[0]) and left_mouse_button_clicked:
-            for sample in sample_list:
-                if sample.layer - 1 == list[2]:
-                    if list not in sample.rectsPos:
-                        sample.rectsPos.append(list)
-        if CheckLeftMouseButtonCollision(list[0]) and right_mouse_button_clicked:
-            for sample in sample_list:
-                if sample.layer - 1 == list[2]:
-                    if list in sample.rectsPos:
-                        sample.rectsPos.remove(list)
-
-
-    # displaying selected rects
-    for sample in sample_list:
-        for list in sample.rectsPos:
-            pygame.draw.rect(screen, (255, 66, 102), list[0])
-
-    for sample in sample_list:
-        for list in sample.rectsPos:
-            if line.rect.colliderect(list[0]) and states["isPlaying"]:
-                sample.waveObj.play()
-
-
     # control timer
     ControlTimer()
+
+    ChooseSamples()
 
     pygame.display.update()
     clock.tick(60)
