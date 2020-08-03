@@ -50,6 +50,8 @@ loop_buttons = [LoopButton(pygame.Rect(238+256-3, 52, 8, 8), (153, 219, 255), 2)
                 LoopButton(pygame.Rect(238+512-3, 52, 8, 8), (153, 219, 255), 3),
                 LoopButton(pygame.Rect(238+768-3, 52, 8, 8), (153, 219, 255), 4),
                 LoopButton(pygame.Rect(238+1024-3, 52, 8, 8), (153, 219, 255), 5)]
+refresh_button = pygame.Rect(186, 674, 30, 30)
+
 # screen objects
 line = Line(pygame.Rect(238, 100, 1, 600), (155, 0, 0), 238)
 bar_line = Line(pygame.Rect(238, 65, 1, 20), (155, 0, 0), 238)
@@ -69,10 +71,16 @@ loop_icon_img.set_colorkey((255, 255, 255))
 sample_warning_icon_img = pygame.image.load("img/sample_warning_icon.png")
 sample_warning_icon_img.set_colorkey((255, 255, 255))
 
+refresh_button_img = pygame.image.load("img/refresh_button.png")
+refresh_button_img.set_colorkey((255, 255, 255))
+
+lines_visible_icon_img = pygame.image.load("img/lines_visible_icon.png")
+lines_visible_icon_img.set_colorkey((255, 255, 255))
+
 # program objects
 states = {"isPlaying": False, "ended": False, "playButtonClicked": False,
           "pauseButtonClicked": False, "restartButtonClicked": False, "actualSix": 1, "actualBeats": 1, "actualBars": 1,
-          "sampleOverload": False}
+          "sampleOverload": False, "linesVisible": False}
 left_mouse_button_clicked = False
 right_mouse_button_clicked = False
 
@@ -177,6 +185,8 @@ playobjs = []
 def ControlSampleSection():
     if states["sampleOverload"]:
         screen.blit(sample_warning_icon_img, (1100, 5))
+    if states["linesVisible"]:
+        screen.blit(lines_visible_icon_img, (1155, 5))
     # adding and removing rects
     for i,s in enumerate(chosen_samples):
         pygame.draw.rect(screen, s.color, pygame.Rect(238, 105 + i * 40, 1024, 40))
@@ -222,6 +232,7 @@ def ReadSamples():
         sample.layer = len(sample_list) + 1
         if len(sample_list) < 15:
             sample_list.append(sample)
+            states["sampleOverload"] = False
         else:
             states["sampleOverload"] = True
 
@@ -238,12 +249,15 @@ def UpdateRects(deleted_sample):
             for rect in sample.rects_list:
                 rect.y -= 40
 
-sample_rect = []
+
+
+def ClearSamples():
+    global sample_list
+    sample_list = []
 
 
 def ChooseSamples():
     sample_name_rects = []
-    global sample_rect
     for i,sample in enumerate(sample_list):
         rect = pygame.Rect(14,14 + i * 44, 202, 40)
         pygame.draw.rect(screen, (33, 39, 48), rect)
@@ -266,6 +280,12 @@ def ChooseSamples():
                 sample.rects_list = []
                 chosen_samples.remove(sample)
 
+    # display refresh button, clear sample list then read samples again
+    pygame.draw.rect(screen, (33, 39, 48), refresh_button)
+    screen.blit(refresh_button_img, (184, 674))
+    if CheckLeftMouseButtonCollision(refresh_button) and left_mouse_button_clicked:
+        ClearSamples()
+        ReadSamples()
 
     for list in sample_name_rects:
         if list[1] in chosen_samples:
@@ -309,6 +329,8 @@ while True:
             actual_key = event.key
             if event.key == pygame.K_SPACE:
                 states["isPlaying"] = not states["isPlaying"]
+            if event.key == pygame.K_TAB:
+                states["linesVisible"] = not states["linesVisible"]
         if event.type == pygame.MOUSEBUTTONDOWN:
             if event.button == 1:
                 left_mouse_button_clicked = True
@@ -340,15 +362,10 @@ while True:
     pygame.draw.rect(screen, (42, 49, 60), pygame.Rect(230, 60, 1040, 650))
     # draw bar display
     pygame.draw.rect(screen, (33, 39, 48), pygame.Rect(238, 65, 1024, 20))
-    # draw lines on bar display
-    for i in range(65):
-        pygame.draw.line(screen, (0, 66, 102), (238+i*16, 65), (238+i*16, 85))
-    for i in range(19):
-        pygame.draw.line(screen, (0, 133, 204), (238+i*64, 65), (238+i*64, 85))
-    for i in range(5):
-        pygame.draw.line(screen, (153, 219, 255), (238+i*256, 65), (238+i*256, 85))
+
     # draw main middle container
     pygame.draw.rect(screen, (33, 39, 48), pygame.Rect(238, 100, 1024, 600))
+
 
     # draw sample rects and control selecting
     ControlSampleSection()
@@ -356,11 +373,6 @@ while True:
     # control playing line
     asyncio.run(ControlPlaying())
     asyncio.run(ControlPlayState())
-
-    # draw playing line
-    pygame.draw.rect(screen, line.color, line.rect)
-    # draw playing bar line
-    pygame.draw.rect(screen, bar_line.color, bar_line.rect)
 
     # control play/pause/restart buttons
     asyncio.run(ControlTopButtons())
@@ -373,5 +385,29 @@ while True:
 
     LoopSelection()
 
+    # draw lines on bar display
+    for i in range(65):
+        end_pos = (238+i*16, 85)
+        if states["linesVisible"]:
+            end_pos = (238+i*16, 700)
+        pygame.draw.line(screen, (0, 66, 102), (238+i*16, 65), end_pos)
+    for i in range(19):
+        end_pos = (238+i*64, 85)
+        if states["linesVisible"]:
+            end_pos = (238+i*64, 700)
+        pygame.draw.line(screen, (0, 133, 204), (238+i*64, 65), end_pos)
+
+    for i in range(5):
+        end_pos = (238 + i * 256, 85)
+        if states["linesVisible"]:
+            end_pos = (238+i*256, 700)
+        pygame.draw.line(screen, (153, 219, 255), (238+i*256, 65), end_pos)
+
+    # draw playing line
+    pygame.draw.rect(screen, line.color, line.rect)
+    # draw playing bar line
+    pygame.draw.rect(screen, bar_line.color, bar_line.rect)
+
     pygame.display.update()
+
     clock.tick(60)
