@@ -8,6 +8,8 @@ from random import randint
 
 # config
 clock = pygame.time.Clock()
+pygame.mixer.pre_init(44100, 16, 2, 1024)
+pygame.mixer.init()
 pygame.init()
 pygame.display.set_caption('8Bar')
 screen = pygame.display.set_mode((1280, 720))
@@ -38,6 +40,7 @@ class Sample:
         self.path = "samples/" + name
         self.layer = None
         self.waveObj = simpleaudio.WaveObject.from_wave_file(self.path)
+        self.sound = pygame.mixer.Sound(self.path)
         self.rectsPos = []
         self.color = (randint(100,120),randint(150,250),randint(200,255))
         self.rects_list = []
@@ -232,16 +235,26 @@ def ControlSampleSection():
         for rect in sample.rectsPos:
             pygame.draw.rect(screen, (255, 66, 102), rect)
 
+    # old version of playing audio
+    # # stop and play audio
+    # global playobjs
+    # for sample in chosen_samples:
+    #     for rect in sample.rectsPos:
+    #         if line.rect.colliderect(rect) and states["isPlaying"]:
+    #             playobjs.append(sample.waveObj.play())
+    # for po in playobjs:
+    #     if not states["isPlaying"]:
+    #         simpleaudio.PlayObject.stop(po)
+    #         playobjs.remove(po)
+
     # stop and play audio
-    global playobjs
     for sample in chosen_samples:
         for rect in sample.rectsPos:
             if line.rect.colliderect(rect) and states["isPlaying"]:
-                playobjs.append(sample.waveObj.play())
-    for po in playobjs:
+                sample.sound.play()
         if not states["isPlaying"]:
-            simpleaudio.PlayObject.stop(po)
-            playobjs.remove(po)
+            sample.sound.stop()
+
 
 
 # Read samples from catalog and append it to sample_list
