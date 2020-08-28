@@ -64,8 +64,8 @@ loop_buttons_8bar = [LoopButton(pygame.Rect(238+128-3, 52, 8, 8), (153, 219, 255
 refresh_button = pygame.Rect(186, 674, 30, 30)
 four_bar_button = pygame.Rect(320, 15, 30, 30)
 eight_bar_button = pygame.Rect(360, 15, 30, 30)
-help_button = pygame.Rect(1220, 15, 30, 30)
-
+help_button = pygame.Rect(1220-80, 15, 60, 30)
+settings_button = pygame.Rect(1220-15, 15, 60, 30)
 # screen objects
 line = Line(pygame.Rect(238, 100, 1, 600), (155, 0, 0), 238)
 bar_line = Line(pygame.Rect(238, 65, 1, 20), (155, 0, 0), 238)
@@ -99,6 +99,9 @@ eight_bar_button_img.set_colorkey((255, 255, 255))
 
 help_button_img = pygame.image.load("img/help_button.png")
 help_button_img.set_colorkey((255, 255, 255))
+
+settings_button_img = pygame.image.load("img/settings_button.png")
+settings_button_img.set_colorkey((255, 255, 255))
 
 # program objects
 states = {"isPlaying": False, "ended": False, "playButtonClicked": False,
@@ -211,9 +214,9 @@ def ControlTimer():
 
 def ControlSampleSection():
     if states["sampleOverload"]:
-        screen.blit(sample_warning_icon_img, (1100, 5))
+        screen.blit(sample_warning_icon_img, (1100-70, 5))
     if states["linesVisible"]:
-        screen.blit(lines_visible_icon_img, (1155, 5))
+        screen.blit(lines_visible_icon_img, (1155-70, 5))
     # adding and removing rects
     for i,s in enumerate(chosen_samples):
         pygame.draw.rect(screen, s.color, pygame.Rect(238, 105 + i * 40, 1024, 40))
@@ -346,7 +349,7 @@ def LoopSelection():
     for button in buttons:
         pygame.draw.rect(screen, button.color, button.rect)
         if button.clicked:
-            screen.blit(loop_icon_img, (1024, 5))
+            screen.blit(loop_icon_img, (1024-70, 5))
         if CheckLeftMouseButtonCollision(button.rect) and left_mouse_button_clicked:
             button.color = (50, 39, 48)
             button.clicked = True
@@ -412,7 +415,7 @@ def ControlHelp():
             states["helpVisible"] = False
     if states["helpVisible"]:
         pygame.draw.rect(screen, (50, 39, 48), help_button)
-        screen.blit(help_button_img, (1220, 15))
+        screen.blit(help_button_img, (1220-80, 15))
         pygame.draw.rect(screen, (42, 48, 60), pygame.Rect(230, 52, 1040, 658))
         font_text = font.render("About:", True, (153, 219, 255))
         screen.blit(font_text, (235, 57))
@@ -440,6 +443,9 @@ def ControlHelp():
             font_text = font_24.render(text[1], True, (153, 219, 255))
             screen.blit(font_text, (235, last_y_pos+100+i*60))
             screen.blit(text[0], (235+len(text[1])*10, last_y_pos+85+i*60))
+        ending_text = "[ To go back to the main screen click the right mouse button on the Help button ]"
+        font_text = font_16.render(ending_text, True, (153, 219, 255))
+        screen.blit(font_text, (720, 65))
 # main program loop
 while True:
     screen.fill((25, 29, 36))
@@ -450,7 +456,8 @@ while True:
         if event.type == pygame.KEYDOWN:
             actual_key = event.key
             if event.key == pygame.K_SPACE:
-                states["isPlaying"] = not states["isPlaying"]
+                if not states["helpVisible"]:
+                    states["isPlaying"] = not states["isPlaying"]
             if event.key == pygame.K_TAB:
                 states["linesVisible"] = not states["linesVisible"]
         if event.type == pygame.MOUSEBUTTONDOWN:
@@ -482,7 +489,10 @@ while True:
     screen.blit(restart_button_img, (660, 15))
 
     pygame.draw.rect(screen, (33, 39, 48), help_button)
-    screen.blit(help_button_img, (1220, 15))
+    screen.blit(help_button_img, (1220-80, 15))
+
+    pygame.draw.rect(screen, (33, 39, 48), settings_button)
+    screen.blit(settings_button_img, (1220-15, 15))
 
     # middle rect section
     pygame.draw.rect(screen, (42, 49, 60), pygame.Rect(230, 60, 1040, 650))
