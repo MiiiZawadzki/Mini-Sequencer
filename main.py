@@ -42,33 +42,46 @@ class Sample:
         self.waveObj = simpleaudio.WaveObject.from_wave_file(self.path)
         self.sound = pygame.mixer.Sound(self.path)
         self.rectsPos = []
-        self.color = (randint(100,120),randint(150,250),randint(200,255))
+        # self.color = (randint(100,120),randint(150,250),randint(200,255))
+        c = randint(100, 120)
+        self.color = (110, c, c)
         self.rects_list = []
 
+# color themes
+dark_theme = {"Background":(25, 29, 36), "Main": (42, 49, 60), "Second":(33, 39, 48), "Selected":(120, 49, 58),
+              "six":(0, 66, 102), "beat": (0, 133, 204), "bar": (153, 219, 255), "HelpWindow":(42, 48, 60)}
+light_theme = {"Background":(160, 160, 160), "Main": (173, 173, 173), "Second":(150, 150, 150), "Selected":(148, 95, 158),
+              "six":(230, 230, 230), "beat": (112, 51, 83), "bar": (106, 17, 69), "HelpWindow":(120, 120, 120)}
+theme = dark_theme
 # buttons
 play_button = pygame.Rect(590, 15, 30, 30)
 pause_button = pygame.Rect(625, 15, 30, 30)
 restart_button = pygame.Rect(660, 15, 30, 30)
-loop_buttons_4bar = [LoopButton(pygame.Rect(238+256-3, 52, 8, 8), (153, 219, 255), 2),
-                LoopButton(pygame.Rect(238+512-3, 52, 8, 8), (153, 219, 255), 3),
-                LoopButton(pygame.Rect(238+768-3, 52, 8, 8), (153, 219, 255), 4),
-                LoopButton(pygame.Rect(238+1024-3, 52, 8, 8), (153, 219, 255), 5)]
-loop_buttons_8bar = [LoopButton(pygame.Rect(238+128-3, 52, 8, 8), (153, 219, 255), 2),
-                LoopButton(pygame.Rect(238+256-3, 52, 8, 8), (153, 219, 255), 3),
-                LoopButton(pygame.Rect(238+384-3, 52, 8, 8), (153, 219, 255), 4),
-                LoopButton(pygame.Rect(238+512-3, 52, 8, 8), (153, 219, 255), 5),
-                LoopButton(pygame.Rect(238+640-3, 52, 8, 8), (153, 219, 255), 6),
-                LoopButton(pygame.Rect(238+768-3, 52, 8, 8), (153, 219, 255), 7),
-                LoopButton(pygame.Rect(238+896-3, 52, 8, 8), (153, 219, 255), 8),
-                LoopButton(pygame.Rect(238+1024-3, 52, 8, 8), (153, 219, 255), 9)]
+loop_buttons_4bar = [LoopButton(pygame.Rect(238+256-3, 52, 8, 8), theme["bar"], 2),
+                LoopButton(pygame.Rect(238+512-3, 52, 8, 8), theme["bar"], 3),
+                LoopButton(pygame.Rect(238+768-3, 52, 8, 8), theme["bar"], 4),
+                LoopButton(pygame.Rect(238+1024-3, 52, 8, 8), theme["bar"], 5)]
+loop_buttons_8bar = [LoopButton(pygame.Rect(238+128-3, 52, 8, 8), theme["bar"], 2),
+                LoopButton(pygame.Rect(238+256-3, 52, 8, 8), theme["bar"], 3),
+                LoopButton(pygame.Rect(238+384-3, 52, 8, 8), theme["bar"], 4),
+                LoopButton(pygame.Rect(238+512-3, 52, 8, 8), theme["bar"], 5),
+                LoopButton(pygame.Rect(238+640-3, 52, 8, 8), theme["bar"], 6),
+                LoopButton(pygame.Rect(238+768-3, 52, 8, 8), theme["bar"], 7),
+                LoopButton(pygame.Rect(238+896-3, 52, 8, 8), theme["bar"], 8),
+                LoopButton(pygame.Rect(238+1024-3, 52, 8, 8), theme["bar"], 9)]
 refresh_button = pygame.Rect(186, 674, 30, 30)
 four_bar_button = pygame.Rect(320, 15, 30, 30)
 eight_bar_button = pygame.Rect(360, 15, 30, 30)
-help_button = pygame.Rect(1220-80, 15, 60, 30)
-settings_button = pygame.Rect(1220-15, 15, 60, 30)
+help_button = pygame.Rect(1220-79, 16, 58, 28)
+settings_button = pygame.Rect(1220-14, 16, 58, 28)
+save_button = pygame.Rect(710, 16, 58, 28)
+load_button = pygame.Rect(710+65, 16, 58, 28)
+
 # screen objects
 line = Line(pygame.Rect(238, 100, 1, 600), (155, 0, 0), 238)
 bar_line = Line(pygame.Rect(238, 65, 1, 20), (155, 0, 0), 238)
+error_area = pygame.Rect(1000, 100, 260, 50)
+error_close_rect = pygame.Rect(1242, 100, 18, 16)
 
 play_button_img = pygame.image.load("img/play_button.png")
 play_button_img.set_colorkey((255, 255, 255))
@@ -103,10 +116,19 @@ help_button_img.set_colorkey((255, 255, 255))
 settings_button_img = pygame.image.load("img/settings_button.png")
 settings_button_img.set_colorkey((255, 255, 255))
 
+save_button_img = pygame.image.load("img/save_button.png")
+save_button_img.set_colorkey((255, 255, 255))
+
+load_button_img = pygame.image.load("img/load_button.png")
+load_button_img.set_colorkey((255, 255, 255))
+
 # program objects
 states = {"isPlaying": False, "ended": False, "playButtonClicked": False,
           "pauseButtonClicked": False, "restartButtonClicked": False, "actualSix": 1, "actualBeats": 1, "actualBars": 1,
-          "sampleOverload": False, "linesVisible": False, "length": 4, "helpVisible": False}
+          "sampleOverload": False, "linesVisible": False, "length": 4, "helpVisible": False, "settingsVisible": False,
+          "errorVisible": False, "saveVisible": False, "loadVisible": False}
+# {"nameOfError": [is error active, was displayed]}
+errors = {"sampleLimit": [False, False]}
 left_mouse_button_clicked = False
 right_mouse_button_clicked = False
 
@@ -115,7 +137,7 @@ pygame.font.init()
 font = pygame.font.SysFont('calibri', 32)
 font_16 = pygame.font.SysFont('calibri', 16)
 font_24 = pygame.font.SysFont('calibri', 24)
-font_text = font.render("1.1", True, (153, 219, 255))
+font_text = font.render("1.1", True, theme["bar"])
 
 
 sample_list = []
@@ -127,6 +149,7 @@ step_size = 0.125
 six_qty = 65
 beats_qty = 17
 bars_qty = 5
+
 # Control Bars, Beats, Sixteenhs on different playing states
 async def ControlPlayState():
     if states["isPlaying"]:
@@ -164,7 +187,7 @@ async def ControlPlayState():
 
 # Move bars and increment sixteenhs
 async def ControlPlaying():
-    if states["isPlaying"] and not states["helpVisible"]:
+    if states["isPlaying"] and not states["helpVisible"] and not states["settingsVisible"]:
         line.position_x += (64/states["length"])
         line.rect.x += (64/states["length"])
         bar_line.position_x += (64/states["length"])
@@ -183,17 +206,17 @@ def CheckLeftMouseButtonCollision(rect):
 # async control play, pause and restart buttons
 async def ControlTopButtons():
     if CheckLeftMouseButtonCollision(play_button):
-        if left_mouse_button_clicked and not states["helpVisible"]:
+        if left_mouse_button_clicked and not states["helpVisible"] and not states["settingsVisible"]:
             states["playButtonClicked"] = True
             states["isPlaying"] = True
 
     if CheckLeftMouseButtonCollision(pause_button):
-        if left_mouse_button_clicked and not states["helpVisible"]:
+        if left_mouse_button_clicked and not states["helpVisible"] and not states["settingsVisible"]:
             states["pauseButtonClicked"] = True
             states["isPlaying"] = False
 
     if CheckLeftMouseButtonCollision(restart_button):
-        if left_mouse_button_clicked and not states["helpVisible"]:
+        if left_mouse_button_clicked and not states["helpVisible"] and not states["settingsVisible"]:
             states["restartButtonClicked"] = True
             states["isPlaying"] = False
             line.rect.x = 238
@@ -208,7 +231,7 @@ async def ControlTopButtons():
 def ControlTimer():
     global font_text
     bar_str = str(str(states["actualBars"]) + "." + str(states["actualBeats"])+ "." + str(states["actualSix"]))
-    font_text = font.render(bar_str, True, (153, 219, 255))
+    font_text = font.render(bar_str, True, theme["bar"])
     screen.blit(font_text, (230, 15))
 
 
@@ -224,7 +247,7 @@ def ControlSampleSection():
         font_16_text = font_16.render(str(s.name), True, (0, 0, 0))
         screen.blit(font_16_text, (240, 108 + i * 40))
         for rect in s.rects_list:
-            pygame.draw.rect(screen, (0, 66, 102), rect)
+            pygame.draw.rect(screen, theme["six"], rect)
         # if clicked on rect
             if CheckLeftMouseButtonCollision(rect) and left_mouse_button_clicked:
                 if rect not in s.rectsPos:
@@ -236,7 +259,7 @@ def ControlSampleSection():
     # displaying selected rects
     for sample in chosen_samples:
         for rect in sample.rectsPos:
-            pygame.draw.rect(screen, (255, 66, 102), rect)
+            pygame.draw.rect(screen, theme["Selected"], rect)
 
     # old version of playing audio
     # # stop and play audio
@@ -254,7 +277,8 @@ def ControlSampleSection():
     for sample in chosen_samples:
         for rect in sample.rectsPos:
             if line.rect.colliderect(rect) and states["isPlaying"]:
-                sample.sound.play()
+                if not states["helpVisible"] and not states["settingsVisible"]:
+                    sample.sound.play()
         if not states["isPlaying"]:
             sample.sound.stop()
 
@@ -277,6 +301,8 @@ def ReadSamples():
             states["sampleOverload"] = False
         else:
             states["sampleOverload"] = True
+
+        errors["sampleLimit"][0] = states["sampleOverload"]
 
 ReadSamples()
 
@@ -302,11 +328,11 @@ def ChooseSamples():
     sample_name_rects = []
     for i,sample in enumerate(sample_list):
         rect = pygame.Rect(14,14 + i * 44, 202, 40)
-        pygame.draw.rect(screen, (33, 39, 48), rect)
+        pygame.draw.rect(screen, theme["Second"], rect)
         sample_name_rects.append([rect, sample])
-        font_text = font_24.render(str(sample.name), True, (153, 219, 255))
+        font_text = font_24.render(str(sample.name), True, theme["bar"])
         if sample.short_name is not None:
-            font_text = font_24.render(str(sample.short_name), True, (153, 219, 255))
+            font_text = font_24.render(str(sample.short_name), True, theme["bar"])
         sample.name_pos = (20, 20 + i * 44)
         screen.blit(font_text, (20, 20 + i * 44))
 
@@ -327,7 +353,7 @@ def ChooseSamples():
                 chosen_samples.remove(sample)
 
     # display refresh button, clear sample list then read samples again
-    pygame.draw.rect(screen, (33, 39, 48), refresh_button)
+    pygame.draw.rect(screen, theme["Second"], refresh_button)
     screen.blit(refresh_button_img, (184, 674))
     if CheckLeftMouseButtonCollision(refresh_button) and left_mouse_button_clicked:
         ClearSamples()
@@ -335,10 +361,10 @@ def ChooseSamples():
 
     for list in sample_name_rects:
         if list[1] in chosen_samples:
-            pygame.draw.rect(screen,(0, 80, 122), list[0])
-            font_text = font_24.render(str(list[1].name), True, (153, 219, 255))
+            pygame.draw.rect(screen,theme["Selected"], list[0])
+            font_text = font_24.render(str(list[1].name), True, theme["bar"])
             if list[1].short_name is not None:
-                font_text = font_24.render(str(list[1].short_name), True, (153, 219, 255))
+                font_text = font_24.render(str(list[1].short_name), True, theme["bar"])
             screen.blit(font_text, list[1].name_pos)
 
 # Control loop options
@@ -351,10 +377,10 @@ def LoopSelection():
         if button.clicked:
             screen.blit(loop_icon_img, (1024-70, 5))
         if CheckLeftMouseButtonCollision(button.rect) and left_mouse_button_clicked:
-            button.color = (50, 39, 48)
+            button.color = theme["Selected"]
             button.clicked = True
         if CheckLeftMouseButtonCollision(button.rect) and right_mouse_button_clicked:
-            button.color = (153, 219, 255)
+            button.color = theme["bar"]
             button.clicked = False
         if states["actualBars"] == button.bar and states["actualSix"] == 1 and states["actualBeats"] == 1:
             if button.clicked:
@@ -372,10 +398,10 @@ def ControlSelectingLength():
     global step_size, six_qty, beats_qty, bars_qty
     length_changed = False
     if states["length"] == 4:
-        pygame.draw.rect(screen, (50, 39, 48), four_bar_button)
+        pygame.draw.rect(screen, theme["Selected"], four_bar_button)
         screen.blit(four_bar_button_img, (320, 15))
     if states["length"] == 8:
-        pygame.draw.rect(screen, (50, 39, 48), eight_bar_button)
+        pygame.draw.rect(screen, theme["Selected"], eight_bar_button)
         screen.blit(eight_bar_button_img, (360, 15))
     if CheckLeftMouseButtonCollision(four_bar_button) and left_mouse_button_clicked:
         states["length"] = 4
@@ -410,14 +436,19 @@ def ControlSelectingLength():
 def ControlHelp():
     if CheckLeftMouseButtonCollision(help_button):
         if left_mouse_button_clicked:
+            if states["settingsVisible"]:
+                states["settingsVisible"] = False
             states["helpVisible"] = True
         if right_mouse_button_clicked:
             states["helpVisible"] = False
     if states["helpVisible"]:
-        pygame.draw.rect(screen, (50, 39, 48), help_button)
+        states["settingsVisible"] = False
+        states["saveVisible"] = False
+        states["loadVisible"] = False
+        pygame.draw.rect(screen, theme["Selected"], help_button)
         screen.blit(help_button_img, (1220-80, 15))
-        pygame.draw.rect(screen, (42, 48, 60), pygame.Rect(230, 52, 1040, 658))
-        font_text = font.render("About:", True, (153, 219, 255))
+        pygame.draw.rect(screen, theme["HelpWindow"], pygame.Rect(230, 52, 1040, 658))
+        font_text = font.render("About:", True, theme["bar"])
         screen.blit(font_text, (235, 57))
         texts = ["This program is simple audio sequencer that uses samples placed in 'samples' directory.",
                  "- To activate/select objects on screen use left mouse button.",
@@ -431,24 +462,147 @@ def ControlHelp():
                  ]
         last_y_pos = 0
         for i, text in enumerate(texts):
-            font_text = font_24.render(text, True, (153, 219, 255))
+            font_text = font_24.render(text, True, theme["bar"])
             screen.blit(font_text, (235, 100+i*30))
             last_y_pos =  100+i*30
-        font_text = font.render("Legend:", True, (153, 219, 255))
+        font_text = font.render("Legend:", True, theme["bar"])
         screen.blit(font_text, (235, last_y_pos+60))
         icons_text = [[loop_icon_img, "- Loop mode active icon:"],
                       [sample_warning_icon_img, "- There are over 15 wav files in the sample directory:"],
                       [lines_visible_icon_img, "- Guides line are visible:"]]
         for i, text in enumerate(icons_text):
-            font_text = font_24.render(text[1], True, (153, 219, 255))
+            font_text = font_24.render(text[1], True, theme["bar"])
             screen.blit(font_text, (235, last_y_pos+100+i*60))
             screen.blit(text[0], (235+len(text[1])*10, last_y_pos+85+i*60))
         ending_text = "[ To go back to the main screen click the right mouse button on the Help button ]"
-        font_text = font_16.render(ending_text, True, (153, 219, 255))
+        font_text = font_16.render(ending_text, True, theme["bar"])
         screen.blit(font_text, (720, 65))
+
+
+def ControlSettings():
+    global theme
+    if CheckLeftMouseButtonCollision(settings_button):
+        if left_mouse_button_clicked:
+            if states["helpVisible"]:
+                states["helpVisible"] = False
+            states["settingsVisible"] = True
+        if right_mouse_button_clicked:
+            states["settingsVisible"] = False
+    if states["settingsVisible"]:
+        states["saveVisible"] = False
+        states["helpVisible"] = False
+        states["loadVisible"] = False
+        pygame.draw.rect(screen, theme["Selected"], settings_button)
+        screen.blit(settings_button_img, (1220 - 15, 15))
+        pygame.draw.rect(screen, theme["HelpWindow"], pygame.Rect(230, 52, 1040, 658))
+        ending_text = "[ To go back to the main screen click the right mouse button on the Settings button ]"
+        font_text = font_16.render(ending_text, True, theme["bar"])
+        screen.blit(font_text, (720, 65))
+        font_text = font.render("Color theme: ", True, theme["bar"])
+        screen.blit(font_text, (235, 57))
+        dark_rect = pygame.Rect(270, 100, 100, 50)
+        pygame.draw.rect(screen, dark_theme["Background"], dark_rect)
+        light_rect = pygame.Rect(420, 100, 100, 50)
+        pygame.draw.rect(screen, light_theme["Background"], light_rect)
+        selected_borders = [pygame.Rect(270,100,100,1), pygame.Rect(270,100,1,50), pygame.Rect(270,150,100,1), pygame.Rect(370,100,1,50)]
+        if theme == light_theme:
+            selected_borders = [pygame.Rect(420,100,100,1), pygame.Rect(420,100,1,50), pygame.Rect(420,150,100,1), pygame.Rect(520,100,1,50)]
+        for border in selected_borders:
+            pygame.draw.rect(screen,theme["Selected"],border,3)
+        if CheckLeftMouseButtonCollision(dark_rect):
+            if left_mouse_button_clicked:
+                theme = dark_theme
+                # Update color of loop rects
+                buttons = loop_buttons_4bar
+                if states["length"] == 8:
+                    buttons = loop_buttons_8bar
+                for button in buttons:
+                    button.color = theme["bar"]
+        if CheckLeftMouseButtonCollision(light_rect):
+            if left_mouse_button_clicked:
+                theme = light_theme
+                # Update color of loop rects
+                buttons = loop_buttons_4bar
+                if states["length"] == 8:
+                    buttons = loop_buttons_8bar
+                for button in buttons:
+                    button.color = theme["bar"]
+
+
+def ControlErrorDisplay():
+    if errors["sampleLimit"][0]:
+        if not errors["sampleLimit"][1]:
+            states["errorVisible"] = True
+            errors["sampleLimit"][1] = True
+        if states["errorVisible"]:
+            pygame.draw.rect(screen, theme["Selected"], error_area)
+            font_text = font_16.render("[x]", True, (0, 0, 0))
+            screen.blit(font_text, (1242, 100))
+            DisplayErrorMessage("Too many samples in 'samples' directory (limit is 15).")
+            if CheckLeftMouseButtonCollision(error_close_rect):
+                if left_mouse_button_clicked:
+                    states["errorVisible"] = False
+
+
+def DisplayErrorMessage(message):
+    text = message
+    if len(text) > 55:
+        text = text[:55]
+        text = text[:-3] + "..."
+    text_first_line = ""
+    text_second_line = ""
+    if len(text) > 29:
+        text_first_line = text[:29]
+        text_second_line = text[29:]
+    else:
+        text_first_line = text
+    font_text = font_16.render(text_first_line, True, (0, 0, 0))
+    screen.blit(font_text, (1005, 116))
+    font_text = font_16.render(text_second_line, True, (0, 0, 0))
+    screen.blit(font_text, (1008, 132))
+
+
+def ControlSave():
+    if CheckLeftMouseButtonCollision(save_button):
+        if left_mouse_button_clicked:
+            states["saveVisible"] = True
+        if right_mouse_button_clicked:
+            states["saveVisible"] = False
+    if states["saveVisible"]:
+        states["settingsVisible"] = False
+        states["helpVisible"] = False
+        states["loadVisible"] = False
+        pygame.draw.rect(screen, theme["Selected"], save_button)
+        screen.blit(save_button_img, (709, 15))
+        pygame.draw.rect(screen, theme["HelpWindow"], pygame.Rect(230, 52, 1040, 658))
+        ending_text = "[ To go back to the main screen click the right mouse button on the Save button ]"
+        font_text = font_16.render(ending_text, True, theme["bar"])
+        screen.blit(font_text, (720, 65))
+
+
+def ControlLoad():
+    if CheckLeftMouseButtonCollision(load_button):
+        if left_mouse_button_clicked:
+            states["loadVisible"] = True
+        if right_mouse_button_clicked:
+            states["loadVisible"] = False
+    if states["loadVisible"]:
+        states["settingsVisible"] = False
+        states["helpVisible"] = False
+        states["saveVisible"] = False
+        pygame.draw.rect(screen, theme["Selected"], load_button)
+        screen.blit(load_button_img, (709+65, 15))
+        pygame.draw.rect(screen, theme["HelpWindow"], pygame.Rect(230, 52, 1040, 658))
+        ending_text = "[ To go back to the main screen click the right mouse button on the Load button ]"
+        font_text = font_16.render(ending_text, True, theme["bar"])
+        screen.blit(font_text, (720, 65))
+
+
 # main program loop
 while True:
-    screen.fill((25, 29, 36))
+    # draw background
+    screen.fill(theme["Background"])
+    # control events
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             pygame.quit()
@@ -456,7 +610,7 @@ while True:
         if event.type == pygame.KEYDOWN:
             actual_key = event.key
             if event.key == pygame.K_SPACE:
-                if not states["helpVisible"]:
+                if not states["helpVisible"] or not states["settingsVisible"]:
                     states["isPlaying"] = not states["isPlaying"]
             if event.key == pygame.K_TAB:
                 states["linesVisible"] = not states["linesVisible"]
@@ -475,33 +629,43 @@ while True:
                 right_mouse_button_clicked = False
     ## screen objects
     # left rect section
-    pygame.draw.rect(screen, (42, 49, 60), pygame.Rect(10, 10, 210, 700))
-    # top rect section
-    pygame.draw.rect(screen, (42, 49, 60), pygame.Rect(585, 10, 110, 40))
+    pygame.draw.rect(screen, theme["Main"], pygame.Rect(10, 10, 210, 700))
 
-    pygame.draw.rect(screen, (33, 39, 48), play_button)
+    # top rect section
+    # play, pause, restart container
+    pygame.draw.rect(screen, theme["Main"], pygame.Rect(585, 10, 110, 40))
+
+    pygame.draw.rect(screen, theme["Second"], play_button)
     screen.blit(play_button_img, (590, 15))
 
-    pygame.draw.rect(screen, (33, 39, 48), pause_button)
+    pygame.draw.rect(screen, theme["Second"], pause_button)
     screen.blit(pause_button_img, (625, 15))
 
-    pygame.draw.rect(screen, (33, 39, 48), restart_button)
+    pygame.draw.rect(screen, theme["Second"], restart_button)
     screen.blit(restart_button_img, (660, 15))
 
-    pygame.draw.rect(screen, (33, 39, 48), help_button)
+    # save, load container
+    pygame.draw.rect(screen, theme["Main"], pygame.Rect(705, 10, 135, 40))
+    pygame.draw.rect(screen, theme["Second"], save_button)
+    screen.blit(save_button_img, (709, 15))
+    pygame.draw.rect(screen, theme["Second"], load_button)
+    screen.blit(load_button_img, (709+65, 15))
+
+    # settings, help container
+    pygame.draw.rect(screen, theme["Main"], pygame.Rect(1135, 10, 135, 40))
+    pygame.draw.rect(screen, theme["Second"], help_button)
     screen.blit(help_button_img, (1220-80, 15))
 
-    pygame.draw.rect(screen, (33, 39, 48), settings_button)
+    pygame.draw.rect(screen, theme["Second"], settings_button)
     screen.blit(settings_button_img, (1220-15, 15))
 
     # middle rect section
-    pygame.draw.rect(screen, (42, 49, 60), pygame.Rect(230, 60, 1040, 650))
+    pygame.draw.rect(screen, theme["Main"], pygame.Rect(230, 60, 1040, 650))
     # draw bar display
-    pygame.draw.rect(screen, (33, 39, 48), pygame.Rect(238, 65, 1024, 20))
+    pygame.draw.rect(screen, theme["Second"], pygame.Rect(238, 65, 1024, 20))
 
     # draw main middle container
-    pygame.draw.rect(screen, (33, 39, 48), pygame.Rect(238, 100, 1024, 600))
-
+    pygame.draw.rect(screen, theme["Second"], pygame.Rect(238, 100, 1024, 600))
 
     # draw sample rects and control selecting
     ControlSampleSection()
@@ -525,36 +689,44 @@ while True:
     # draw lines on bar display
     # if lineVisible state is set to True draw lines to the end of the window
     for i in range(six_qty):
-        end_pos = (238+i*(1024/(six_qty-1)), 85)
+        end_pos = (238+i*(1024/(six_qty-1)), 84)
         if states["linesVisible"]:
             end_pos = (238+i*(1024/(six_qty-1)), 700)
-        pygame.draw.line(screen, (0, 66, 102), (238+i*(1024/(six_qty-1)), 65), end_pos)
+        pygame.draw.line(screen, theme["six"], (int(238+i*(1024/(six_qty-1))), 65), end_pos)
     for i in range(beats_qty):
-        end_pos = (238+i*(1024/(beats_qty-1)), 85)
+        end_pos = (238+i*(1024/(beats_qty-1)), 84)
         if states["linesVisible"]:
             end_pos = (238+i*(1024/(beats_qty-1)), 700)
-        pygame.draw.line(screen, (0, 133, 204), (238+i*(1024/(beats_qty-1)), 65), end_pos)
+        pygame.draw.line(screen, theme["beat"], (int(238+i*(1024/(beats_qty-1))), 65), end_pos)
 
     for i in range(bars_qty):
-        end_pos = (238 + i * (1024/(bars_qty-1)), 85)
+        end_pos = (238 + i * (1024/(bars_qty-1)), 84)
         if states["linesVisible"]:
             end_pos = (238+i*(1024/(bars_qty-1)), 700)
-        pygame.draw.line(screen, (153, 219, 255), (238+i*(1024/(bars_qty-1)), 65), end_pos)
+        pygame.draw.line(screen, theme["bar"], (int(238+i*(1024/(bars_qty-1))), 65), end_pos)
 
     # draw playing line
     pygame.draw.rect(screen, line.color, line.rect)
     # draw playing bar line
     pygame.draw.rect(screen, bar_line.color, bar_line.rect)
 
-    pygame.draw.rect(screen, (33, 39, 48), four_bar_button)
+    pygame.draw.rect(screen, theme["Second"], four_bar_button)
     screen.blit(four_bar_button_img, (320, 15))
 
-    pygame.draw.rect(screen, (33, 39, 48), eight_bar_button)
+    pygame.draw.rect(screen, theme["Second"], eight_bar_button)
     screen.blit(eight_bar_button_img, (360, 15))
 
     ControlSelectingLength()
 
     ControlHelp()
+
+    ControlSettings()
+
+    ControlErrorDisplay()
+
+    ControlSave()
+
+    ControlLoad()
 
     pygame.display.update()
 
