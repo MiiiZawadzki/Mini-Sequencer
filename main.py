@@ -5,6 +5,7 @@ import asyncio
 import simpleaudio
 from glob import glob
 from random import randint
+import json
 
 # config
 clock = pygame.time.Clock()
@@ -76,6 +77,12 @@ help_button = pygame.Rect(1220-79, 16, 58, 28)
 settings_button = pygame.Rect(1220-14, 16, 58, 28)
 save_button = pygame.Rect(710, 16, 58, 28)
 load_button = pygame.Rect(710+65, 16, 58, 28)
+save_file_button = pygame.Rect(710, 96, 58, 28)
+load_file_button = pygame.Rect(721, 161, 118, 28)
+project_buttons = []
+select_project_scroll_button = pygame.Rect(695, 62, 15, 35)
+scroll_area = pygame.Rect(695, 62, 15, 638)
+selected_project = None
 
 # screen objects
 line = Line(pygame.Rect(238, 100, 1, 600), (155, 0, 0), 238)
@@ -122,13 +129,16 @@ save_button_img.set_colorkey((255, 255, 255))
 load_button_img = pygame.image.load("img/load_button.png")
 load_button_img.set_colorkey((255, 255, 255))
 
+load_project_button_img = pygame.image.load("img/load_project_button.png")
+load_project_button_img.set_colorkey((255, 255, 255))
+
 # program objects
 states = {"isPlaying": False, "ended": False, "playButtonClicked": False,
           "pauseButtonClicked": False, "restartButtonClicked": False, "actualSix": 1, "actualBeats": 1, "actualBars": 1,
           "sampleOverload": False, "linesVisible": False, "length": 4, "helpVisible": False, "settingsVisible": False,
           "errorVisible": False, "saveVisible": False, "loadVisible": False}
 # {"nameOfError": [is error active, was displayed]}
-errors = {"sampleLimit": [False, False]}
+errors = {"sampleLimit": [False, False], "notSelectedProject": [False, False]}
 left_mouse_button_clicked = False
 right_mouse_button_clicked = False
 
@@ -143,6 +153,7 @@ font_text = font.render("1.1", True, theme["bar"])
 sample_list = []
 chosen_samples = []
 playobjs = []
+project_names = []
 
 # playing config
 step_size = 0.125
@@ -530,39 +541,66 @@ def ControlSettings():
 
 
 def ControlErrorDisplay():
+    error_pos = (1000, 100)
+    error_close_rect.y = 100
+    if states["loadVisible"]:
+        error_pos = (1000, 52)
+        error_close_rect.y = 52
     if errors["sampleLimit"][0]:
+        error_area.x = error_pos[0]
+        error_area.y = error_pos[1]
         if not errors["sampleLimit"][1]:
             states["errorVisible"] = True
             errors["sampleLimit"][1] = True
         if states["errorVisible"]:
             pygame.draw.rect(screen, theme["Selected"], error_area)
             font_text = font_16.render("[x]", True, (0, 0, 0))
-            screen.blit(font_text, (1242, 100))
+            screen.blit(font_text, (1242, error_pos[1]))
             DisplayErrorMessage("Too many samples in 'samples' directory (limit is 15).")
             if CheckLeftMouseButtonCollision(error_close_rect):
                 if left_mouse_button_clicked:
                     states["errorVisible"] = False
-
+    if errors["notSelectedProject"][0]:
+        error_area.x = error_pos[0]
+        error_area.y = error_pos[1]
+        if not errors["notSelectedProject"][1]:
+            states["errorVisible"] = True
+            errors["notSelectedProject"][1] = True
+        if states["errorVisible"]:
+            pygame.draw.rect(screen, theme["Selected"], error_area)
+            font_text = font_16.render("[x]", True, (0, 0, 0))
+            screen.blit(font_text, (1242, error_pos[1]))
+            DisplayErrorMessage("First, select a project to load.")
+            if CheckLeftMouseButtonCollision(error_close_rect):
+                if left_mouse_button_clicked:
+                    states["errorVisible"] = False
 
 def DisplayErrorMessage(message):
+    error_pos1 = (1005, 116)
+    error_pos2 = (1008, 132)
+    if states["loadVisible"]:
+        error_pos1 = (1005, 68)
+        error_pos2 = (1008, 84)
     text = message
     if len(text) > 55:
         text = text[:55]
         text = text[:-3] + "..."
     text_first_line = ""
     text_second_line = ""
-    if len(text) > 29:
-        text_first_line = text[:29]
-        text_second_line = text[29:]
+    if len(text) > 32:
+        text_first_line = text[:30]
+        text_second_line = text[30:]
     else:
         text_first_line = text
     font_text = font_16.render(text_first_line, True, (0, 0, 0))
-    screen.blit(font_text, (1005, 116))
+    screen.blit(font_text, error_pos1)
     font_text = font_16.render(text_second_line, True, (0, 0, 0))
-    screen.blit(font_text, (1008, 132))
+    screen.blit(font_text, error_pos2)
 
-
+save_is_pressed = False
+load_is_pressed = False
 def ControlSave():
+    global save_is_pressed
     if CheckLeftMouseButtonCollision(save_button):
         if left_mouse_button_clicked:
             states["saveVisible"] = True
@@ -578,9 +616,47 @@ def ControlSave():
         ending_text = "[ To go back to the main screen click the right mouse button on the Save button ]"
         font_text = font_16.render(ending_text, True, theme["bar"])
         screen.blit(font_text, (720, 65))
+        pygame.draw.rect(screen, theme["Selected"], save_file_button)
+
+        if CheckLeftMouseButtonCollision(save_file_button):
+            if left_mouse_button_clicked:
+                if not save_is_pressed:
+                    length = states["length"]
+                    sample_names = {}
+                    loop_button = 10000
+                    if length == 4:
+                        for button in loop_buttons_4bar:
+                            if button.clicked:
+                                if loop_button > button.rect.x:
+                                    loop_button = button.rect.x
+                    else:
+                        for button in loop_buttons_8bar:
+                            if button.clicked:
+                                if loop_button > button.rect.x:
+                                    loop_button = button.rect.x
+                    for sample in chosen_samples:
+                        x_val = []
+                        for rect in sample.rectsPos:
+                            x_val.append(rect.x)
+                        sample_names[sample.name] = x_val
+                    data_to_save = {"Length": length, "sample_list": sample_names, "loop_pos":loop_button}
+                    with open('saved/new project.json', 'w') as json_file:
+                        json.dump(data_to_save, json_file)
+                    save_is_pressed = True
+
+
+def ReadProjects():
+    global project_names
+    projects = glob("./saved/*.json")
+    for proj in projects:
+        name = proj.split("\\")[-1]
+        short_name = name.split(".json")
+        if short_name[0] not in project_names:
+            project_names.append(short_name[0])
 
 
 def ControlLoad():
+    global load_is_pressed, project_names, project_buttons, selected_project, errors
     if CheckLeftMouseButtonCollision(load_button):
         if left_mouse_button_clicked:
             states["loadVisible"] = True
@@ -596,6 +672,133 @@ def ControlLoad():
         ending_text = "[ To go back to the main screen click the right mouse button on the Load button ]"
         font_text = font_16.render(ending_text, True, theme["bar"])
         screen.blit(font_text, (720, 65))
+        load_text = "Selected project: "
+        if selected_project is not None:
+            load_text += selected_project[0]
+        font_text = font_24.render(load_text, True, theme["bar"])
+        screen.blit(font_text, (720, 100))
+
+        load_text = "[ To load project click the Load project button ]"
+        font_text = font_16.render(load_text, True, theme["bar"])
+        screen.blit(font_text, (720, 140))
+
+        pygame.draw.rect(screen, theme["Second"], load_file_button)
+        screen.blit(load_project_button_img, (720, 160))
+
+        pygame.draw.rect(screen, theme["Second"], pygame.Rect(235, 57, 480, 648))
+
+        ReadProjects()
+
+        # Display list of available projects
+        if len(project_names) < 14:
+            for i, proj in enumerate(project_names):
+                rect = pygame.Rect(240, 62+i*45, 450, 40)
+                if rect not in project_buttons:
+                    project_buttons.append(rect)
+                pygame.draw.rect(screen, theme["HelpWindow"], rect)
+                if selected_project is not None and rect == selected_project[1]:
+                    pygame.draw.rect(screen, theme["Selected"], rect)
+                if CheckLeftMouseButtonCollision(rect):
+                    if left_mouse_button_clicked:
+                        selected_project = [proj, rect]
+                font_text = font_24.render(proj, True, theme["bar"])
+                screen.blit(font_text, (245, 68+i*45))
+        else:
+            for i, proj in enumerate(project_names):
+                if i < 14:
+                    rect = pygame.Rect(240, 62+i*45, 450, 40)
+                    if rect not in project_buttons:
+                        project_buttons.append(rect)
+                    pygame.draw.rect(screen, theme["HelpWindow"], rect)
+                    if selected_project is not None and rect == selected_project[1]:
+                        pygame.draw.rect(screen, theme["Selected"], rect)
+                    if CheckLeftMouseButtonCollision(rect):
+                        if left_mouse_button_clicked:
+                            selected_project = [proj, rect]
+                    font_text = font_24.render(proj, True, theme["bar"])
+                    screen.blit(font_text, (245, 68+i*45))
+            pygame.draw.rect(screen, theme["HelpWindow"], scroll_area)
+            pygame.draw.rect(screen, theme["bar"], select_project_scroll_button)
+            mouse_pos = pygame.mouse.get_pos()
+            if CheckLeftMouseButtonCollision(select_project_scroll_button):
+                if left_mouse_button_clicked:
+                    select_project_scroll_button.y = mouse_pos[1]-17
+            if CheckLeftMouseButtonCollision(scroll_area):
+                if left_mouse_button_clicked:
+                    select_project_scroll_button.y = mouse_pos[1] - 17
+            if select_project_scroll_button.bottom > 700:
+                select_project_scroll_button.bottom = 700
+            if select_project_scroll_button.top < 62:
+                select_project_scroll_button.top = 62
+        # Load project if load_project button is clicked or display error
+        if CheckLeftMouseButtonCollision(load_file_button):
+            if left_mouse_button_clicked:
+                pygame.draw.rect(screen, theme["Selected"], load_file_button)
+                screen.blit(load_project_button_img, (720, 160))
+                if not load_is_pressed:
+                    if selected_project is None:
+                        errors["notSelectedProject"][0] = True
+                    else:
+                        LoadProject()
+                    load_is_pressed = True
+
+
+
+def LoadProject():
+    global selected_project, states, six_qty, beats_qty, bars_qty, line, bar_line
+    with open('saved/'+str(selected_project[0])+'.json') as json_file:
+        data = json.load(json_file)
+    states["loadVisible"] = False
+    states["length"] = data["Length"]
+    global chosen_samples
+    for sample in chosen_samples:
+        sample.rectsPos = []
+        sample.rects_list = []
+    chosen_samples = []
+    states["isPlaying"] = False
+    states["actualBars"] = 1
+    states["actualSix"] = 1
+    states["actualBeats"] = 1
+    line.rect.x = 238
+    line.position_x = 238
+    bar_line.rect.x = 238
+    bar_line.position_x = 238
+    if states["length"] == 4:
+        six_qty = 65
+        beats_qty = 17
+        bars_qty = 5
+        for button in loop_buttons_4bar:
+            if button.rect.x == data["loop_pos"]:
+                button.clicked = True
+                button.color = theme["Selected"]
+            else:
+                button.clicked = False
+                button.color = theme["bar"]
+    if states["length"] == 8:
+        six_qty = 129
+        beats_qty = 33
+        bars_qty = 9
+        for button in loop_buttons_8bar:
+            if button.rect.x == data["loop_pos"]:
+                button.clicked = True
+                button.color = theme["Selected"]
+            else:
+                button.clicked = False
+                button.color = theme["bar"]
+    for dict in data["sample_list"]:
+        print(dict, data["sample_list"][dict])
+        for sample in sample_list:
+            if sample.name == dict:
+                if states["length"] == 4:
+                    for i in range(64):
+                        sample.rects_list.append(pygame.Rect(238 + i * 16, 125 + len(chosen_samples) * 40, 15, 10))
+                    for pos in data["sample_list"][dict]:
+                        for rect in sample.rects_list:
+                            if rect.x == pos:
+                                sample.rectsPos.append(rect)
+                    chosen_samples.append(sample)
+
+
 
 
 # main program loop
@@ -621,6 +824,8 @@ while True:
                 right_mouse_button_clicked = True
         if event.type == pygame.MOUSEBUTTONUP:
             if event.button == 1:
+                save_is_pressed = False
+                load_is_pressed = False
                 left_mouse_button_clicked = False
                 states["playButtonClicked"] = False
                 states["pauseButtonClicked"] = False
@@ -722,11 +927,11 @@ while True:
 
     ControlSettings()
 
-    ControlErrorDisplay()
-
     ControlSave()
 
     ControlLoad()
+
+    ControlErrorDisplay()
 
     pygame.display.update()
 
