@@ -87,6 +87,9 @@ selected_project = None
 input_project_name_area = pygame.Rect(238, 122, 500, 32)
 input_active = False
 project_name = ""
+accept_overwrite_project_button = pygame.Rect(244, 261, 58, 28)
+decline_overwrite_project_button = pygame.Rect(311, 261, 58, 28)
+
 # screen objects
 line = Line(pygame.Rect(238, 100, 1, 600), (155, 0, 0), 238)
 bar_line = Line(pygame.Rect(238, 65, 1, 20), (155, 0, 0), 238)
@@ -137,6 +140,12 @@ load_project_button_img.set_colorkey((255, 255, 255))
 
 save_project_button_img = pygame.image.load("img/save_project_button.png")
 save_project_button_img.set_colorkey((255, 255, 255))
+
+no_button_img = pygame.image.load("img/no_button.png")
+no_button_img.set_colorkey((255, 255, 255))
+
+yes_button_img = pygame.image.load("img/yes_button.png")
+yes_button_img.set_colorkey((255, 255, 255))
 
 # program objects
 states = {"isPlaying": False, "ended": False, "playButtonClicked": False,
@@ -626,8 +635,11 @@ save_is_pressed = False
 load_is_pressed = False
 key_is_pressed = False
 set_project_name = False
+no_clicked = False
+ready_to_save = True
 def ControlSave():
-    global save_is_pressed, input_active, actual_key, project_name, key_is_pressed, set_project_name
+    global save_is_pressed, input_active, actual_key, project_name, key_is_pressed, set_project_name, \
+        project_names, ready_to_save, no_clicked
     if CheckLeftMouseButtonCollision(save_button):
         if left_mouse_button_clicked:
             states["saveVisible"] = True
@@ -692,29 +704,36 @@ def ControlSave():
                 pygame.draw.rect(screen, theme["Selected"], save_file_button)
                 screen.blit(save_project_button_img, (750, 124))
                 if not save_is_pressed:
-                    length = states["length"]
-                    sample_names = {}
-                    loop_button = 10000
-                    if length == 4:
-                        for button in loop_buttons_4bar:
-                            if button.clicked:
-                                if loop_button > button.rect.x:
-                                    loop_button = button.rect.x
-                    else:
-                        for button in loop_buttons_8bar:
-                            if button.clicked:
-                                if loop_button > button.rect.x:
-                                    loop_button = button.rect.x
-                    for sample in chosen_samples:
-                        x_val = []
-                        for rect in sample.rectsPos:
-                            x_val.append(rect.x)
-                        sample_names[sample.name] = x_val
-                    data_to_save = {"Length": length, "sample_list": sample_names, "loop_pos":loop_button}
-                    path = 'saved/'+project_name+'.json'
-                    with open(path, 'w') as json_file:
-                        json.dump(data_to_save, json_file)
+                    # Check if project with this name already exist and display alert
+                    ReadProjects()
+                    if project_name in project_names:
+                        ready_to_save = False
+                        no_clicked = False
+                    SaveProject()
                     save_is_pressed = True
+        if not ready_to_save and not no_clicked:
+            pygame.draw.rect(screen, theme["Second"], pygame.Rect(238, 185, 500, 160))
+            save_text = "Project with that name already exist"
+            font_text = font_24.render(save_text, True, theme["bar"])
+            screen.blit(font_text, (243, 190))
+            save_text = "Do you want to overwrite it?"
+            font_text = font_24.render(save_text, True, theme["bar"])
+            screen.blit(font_text, (243, 220))
+            pygame.draw.rect(screen, theme["Background"], accept_overwrite_project_button)
+            screen.blit(yes_button_img, (243, 260))
+            pygame.draw.rect(screen, theme["Background"], decline_overwrite_project_button)
+            screen.blit(no_button_img, (310, 260))
+            if CheckLeftMouseButtonCollision(accept_overwrite_project_button):
+                if left_mouse_button_clicked:
+                    pygame.draw.rect(screen, theme["Selected"], accept_overwrite_project_button)
+                    screen.blit(yes_button_img, (243, 260))
+                    ready_to_save = True
+                    SaveProject()
+            if CheckLeftMouseButtonCollision(decline_overwrite_project_button):
+                if left_mouse_button_clicked:
+                    pygame.draw.rect(screen, theme["Selected"], decline_overwrite_project_button)
+                    screen.blit(no_button_img, (310, 260))
+                    no_clicked = True
 
 
 def ReadProjects():
@@ -725,6 +744,33 @@ def ReadProjects():
         short_name = name.split(".json")
         if short_name[0] not in project_names:
             project_names.append(short_name[0])
+
+
+def SaveProject():
+    global states, loop_buttons_8bar, loop_buttons_4bar, chosen_samples, project_name, ready_to_save
+    length = states["length"]
+    sample_names = {}
+    loop_button = 10000
+    if length == 4:
+        for button in loop_buttons_4bar:
+            if button.clicked:
+                if loop_button > button.rect.x:
+                    loop_button = button.rect.x
+    else:
+        for button in loop_buttons_8bar:
+            if button.clicked:
+                if loop_button > button.rect.x:
+                    loop_button = button.rect.x
+    for sample in chosen_samples:
+        x_val = []
+        for rect in sample.rectsPos:
+            x_val.append(rect.x)
+        sample_names[sample.name] = x_val
+    data_to_save = {"Length": length, "sample_list": sample_names, "loop_pos": loop_button}
+    path = 'saved/' + project_name + '.json'
+    if ready_to_save:
+        with open(path, 'w') as json_file:
+            json.dump(data_to_save, json_file)
 
 
 def ControlLoad():
@@ -858,12 +904,19 @@ def LoadProject():
                 button.clicked = False
                 button.color = theme["bar"]
     for dict in data["sample_list"]:
-        print(dict, data["sample_list"][dict])
         for sample in sample_list:
             if sample.name == dict:
                 if states["length"] == 4:
                     for i in range(64):
                         sample.rects_list.append(pygame.Rect(238 + i * 16, 125 + len(chosen_samples) * 40, 15, 10))
+                    for pos in data["sample_list"][dict]:
+                        for rect in sample.rects_list:
+                            if rect.x == pos:
+                                sample.rectsPos.append(rect)
+                    chosen_samples.append(sample)
+                if states["length"] == 8:
+                    for i in range(128):
+                        sample.rects_list.append(pygame.Rect(238 + i * 8, 125 + len(chosen_samples) * 40, 7, 5))
                     for pos in data["sample_list"][dict]:
                         for rect in sample.rects_list:
                             if rect.x == pos:
