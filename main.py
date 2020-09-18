@@ -6,6 +6,7 @@ import simpleaudio
 from glob import glob
 from random import randint
 import json
+import re
 
 # config
 clock = pygame.time.Clock()
@@ -77,13 +78,15 @@ help_button = pygame.Rect(1220-79, 16, 58, 28)
 settings_button = pygame.Rect(1220-14, 16, 58, 28)
 save_button = pygame.Rect(710, 16, 58, 28)
 load_button = pygame.Rect(710+65, 16, 58, 28)
-save_file_button = pygame.Rect(710, 96, 58, 28)
+save_file_button = pygame.Rect(751, 125, 118, 28)
 load_file_button = pygame.Rect(721, 161, 118, 28)
 project_buttons = []
 select_project_scroll_button = pygame.Rect(695, 62, 15, 35)
 scroll_area = pygame.Rect(695, 62, 15, 638)
 selected_project = None
-
+input_project_name_area = pygame.Rect(238, 122, 500, 32)
+input_active = False
+project_name = ""
 # screen objects
 line = Line(pygame.Rect(238, 100, 1, 600), (155, 0, 0), 238)
 bar_line = Line(pygame.Rect(238, 65, 1, 20), (155, 0, 0), 238)
@@ -132,13 +135,16 @@ load_button_img.set_colorkey((255, 255, 255))
 load_project_button_img = pygame.image.load("img/load_project_button.png")
 load_project_button_img.set_colorkey((255, 255, 255))
 
+save_project_button_img = pygame.image.load("img/save_project_button.png")
+save_project_button_img.set_colorkey((255, 255, 255))
+
 # program objects
 states = {"isPlaying": False, "ended": False, "playButtonClicked": False,
           "pauseButtonClicked": False, "restartButtonClicked": False, "actualSix": 1, "actualBeats": 1, "actualBars": 1,
           "sampleOverload": False, "linesVisible": False, "length": 4, "helpVisible": False, "settingsVisible": False,
           "errorVisible": False, "saveVisible": False, "loadVisible": False}
 # {"nameOfError": [is error active, was displayed]}
-errors = {"sampleLimit": [False, False], "notSelectedProject": [False, False]}
+errors = {"sampleLimit": [False, False], "notSelectedProject": [False, False], "tooLongProjectName": [False, False]}
 left_mouse_button_clicked = False
 right_mouse_button_clicked = False
 
@@ -148,7 +154,7 @@ font = pygame.font.SysFont('calibri', 32)
 font_16 = pygame.font.SysFont('calibri', 16)
 font_24 = pygame.font.SysFont('calibri', 24)
 font_text = font.render("1.1", True, theme["bar"])
-
+actual_key = None
 
 sample_list = []
 chosen_samples = []
@@ -198,7 +204,8 @@ async def ControlPlayState():
 
 # Move bars and increment sixteenhs
 async def ControlPlaying():
-    if states["isPlaying"] and not states["helpVisible"] and not states["settingsVisible"]:
+    if states["isPlaying"] and not states["helpVisible"] and not states["settingsVisible"] \
+            and not states["saveVisible"] and not states["loadVisible"]:
         line.position_x += (64/states["length"])
         line.rect.x += (64/states["length"])
         bar_line.position_x += (64/states["length"])
@@ -217,17 +224,20 @@ def CheckLeftMouseButtonCollision(rect):
 # async control play, pause and restart buttons
 async def ControlTopButtons():
     if CheckLeftMouseButtonCollision(play_button):
-        if left_mouse_button_clicked and not states["helpVisible"] and not states["settingsVisible"]:
+        if left_mouse_button_clicked and not states["helpVisible"] and not states["settingsVisible"] \
+                and not states["saveVisible"] and not states["loadVisible"]:
             states["playButtonClicked"] = True
             states["isPlaying"] = True
 
     if CheckLeftMouseButtonCollision(pause_button):
-        if left_mouse_button_clicked and not states["helpVisible"] and not states["settingsVisible"]:
+        if left_mouse_button_clicked and not states["helpVisible"] and not states["settingsVisible"] \
+                and not states["saveVisible"] and not states["loadVisible"]:
             states["pauseButtonClicked"] = True
             states["isPlaying"] = False
 
     if CheckLeftMouseButtonCollision(restart_button):
-        if left_mouse_button_clicked and not states["helpVisible"] and not states["settingsVisible"]:
+        if left_mouse_button_clicked and not states["helpVisible"] and not states["settingsVisible"] \
+                and not states["saveVisible"] and not states["loadVisible"]:
             states["restartButtonClicked"] = True
             states["isPlaying"] = False
             line.rect.x = 238
@@ -288,7 +298,8 @@ def ControlSampleSection():
     for sample in chosen_samples:
         for rect in sample.rectsPos:
             if line.rect.colliderect(rect) and states["isPlaying"]:
-                if not states["helpVisible"] and not states["settingsVisible"]:
+                if not states["helpVisible"] and not states["settingsVisible"] and not states["saveVisible"] \
+                        and not states["loadVisible"]:
                     sample.sound.play()
         if not states["isPlaying"]:
             sample.sound.stop()
@@ -574,6 +585,20 @@ def ControlErrorDisplay():
             if CheckLeftMouseButtonCollision(error_close_rect):
                 if left_mouse_button_clicked:
                     states["errorVisible"] = False
+    if errors["tooLongProjectName"][0]:
+        error_area.x = error_pos[0]
+        error_area.y = error_pos[1]
+        if not errors["tooLongProjectName"][1]:
+            states["errorVisible"] = True
+            errors["tooLongProjectName"][1] = True
+        if states["errorVisible"]:
+            pygame.draw.rect(screen, theme["Selected"], error_area)
+            font_text = font_16.render("[x]", True, (0, 0, 0))
+            screen.blit(font_text, (1242, error_pos[1]))
+            DisplayErrorMessage("Too long project name (max 40 characters).")
+            if CheckLeftMouseButtonCollision(error_close_rect):
+                if left_mouse_button_clicked:
+                    states["errorVisible"] = False
 
 def DisplayErrorMessage(message):
     error_pos1 = (1005, 116)
@@ -599,8 +624,10 @@ def DisplayErrorMessage(message):
 
 save_is_pressed = False
 load_is_pressed = False
+key_is_pressed = False
+set_project_name = False
 def ControlSave():
-    global save_is_pressed
+    global save_is_pressed, input_active, actual_key, project_name, key_is_pressed, set_project_name
     if CheckLeftMouseButtonCollision(save_button):
         if left_mouse_button_clicked:
             states["saveVisible"] = True
@@ -616,10 +643,54 @@ def ControlSave():
         ending_text = "[ To go back to the main screen click the right mouse button on the Save button ]"
         font_text = font_16.render(ending_text, True, theme["bar"])
         screen.blit(font_text, (720, 65))
-        pygame.draw.rect(screen, theme["Selected"], save_file_button)
+        pygame.draw.rect(screen, theme["Second"], save_file_button)
+        screen.blit(save_project_button_img, (750,124))
+        pygame.draw.rect(screen, theme["Second"], input_project_name_area)
+
+        if CheckLeftMouseButtonCollision(input_project_name_area):
+            if left_mouse_button_clicked:
+                input_active = True
+        if CheckLeftMouseButtonCollision(input_project_name_area):
+            if right_mouse_button_clicked:
+                input_active = False
+
+        color = theme["bar"]
+        if input_active:
+            color = theme["Selected"]
+            if actual_key is not None:
+                if not key_is_pressed:
+                    if len(project_name) < 40:
+                        if re.findall("^([a-z0-9])$", chr(actual_key)):
+                            project_name += chr(actual_key)
+                    else:
+                        errors["tooLongProjectName"][0] = True
+                    if actual_key == 8:
+                        project_name = project_name[:-1]
+                    if actual_key == 32:
+                        project_name += " "
+                    key_is_pressed = True
+
+        # Display new_project as default project name
+        if project_name == "":
+            if not set_project_name:
+                project_name = "new_project"
+                set_project_name = True
+        font_text = font_24.render(project_name, True, theme["bar"])
+        screen.blit(font_text, (240, 126))
+        pygame.draw.line(screen, color,(238,122), (238+500, 122))
+        pygame.draw.line(screen, color, (238, 122+32), (238 + 500, 122+32))
+        pygame.draw.line(screen, color, (238, 122), (238, 122+32))
+        pygame.draw.line(screen, color, (238+500, 122), (238 + 500, 122+32))
+
+        save_text = "[ To save project click on input area (it will turn red), type project name and click on the Save project button ]"
+        font_text = font_16.render(save_text, True, theme["bar"])
+        screen.blit(font_text, (238, 92))
+
 
         if CheckLeftMouseButtonCollision(save_file_button):
             if left_mouse_button_clicked:
+                pygame.draw.rect(screen, theme["Selected"], save_file_button)
+                screen.blit(save_project_button_img, (750, 124))
                 if not save_is_pressed:
                     length = states["length"]
                     sample_names = {}
@@ -640,7 +711,8 @@ def ControlSave():
                             x_val.append(rect.x)
                         sample_names[sample.name] = x_val
                     data_to_save = {"Length": length, "sample_list": sample_names, "loop_pos":loop_button}
-                    with open('saved/new project.json', 'w') as json_file:
+                    path = 'saved/'+project_name+'.json'
+                    with open(path, 'w') as json_file:
                         json.dump(data_to_save, json_file)
                     save_is_pressed = True
 
@@ -817,6 +889,9 @@ while True:
                     states["isPlaying"] = not states["isPlaying"]
             if event.key == pygame.K_TAB:
                 states["linesVisible"] = not states["linesVisible"]
+        if event.type == pygame.KEYUP:
+            actual_key = None
+            key_is_pressed = False
         if event.type == pygame.MOUSEBUTTONDOWN:
             if event.button == 1:
                 left_mouse_button_clicked = True
