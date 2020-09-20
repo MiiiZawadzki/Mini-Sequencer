@@ -7,13 +7,13 @@ from glob import glob
 from random import randint
 import json
 import re
-
+from math import ceil
 # config
 clock = pygame.time.Clock()
 pygame.mixer.pre_init(44100, 16, 2, 1024)
 pygame.mixer.init()
 pygame.init()
-pygame.display.set_caption('8Bar')
+pygame.display.set_caption('Mini-Sequencer')
 screen = pygame.display.set_mode((1280, 720))
 
 
@@ -89,6 +89,7 @@ input_active = False
 project_name = ""
 accept_overwrite_project_button = pygame.Rect(244, 261, 58, 28)
 decline_overwrite_project_button = pygame.Rect(311, 261, 58, 28)
+new_project_button = pygame.Rect(454, 16, 118, 28)
 
 # screen objects
 line = Line(pygame.Rect(238, 100, 1, 600), (155, 0, 0), 238)
@@ -147,11 +148,15 @@ no_button_img.set_colorkey((255, 255, 255))
 yes_button_img = pygame.image.load("img/yes_button.png")
 yes_button_img.set_colorkey((255, 255, 255))
 
+new_project_button_img = pygame.image.load("img/new_project_button.png")
+new_project_button_img.set_colorkey((255, 255, 255))
+
+
 # program objects
 states = {"isPlaying": False, "ended": False, "playButtonClicked": False,
           "pauseButtonClicked": False, "restartButtonClicked": False, "actualSix": 1, "actualBeats": 1, "actualBars": 1,
           "sampleOverload": False, "linesVisible": False, "length": 4, "helpVisible": False, "settingsVisible": False,
-          "errorVisible": False, "saveVisible": False, "loadVisible": False}
+          "errorVisible": False, "saveVisible": False, "loadVisible": False, "newProjectVisble": False}
 # {"nameOfError": [is error active, was displayed]}
 errors = {"sampleLimit": [False, False], "notSelectedProject": [False, False], "tooLongProjectName": [False, False]}
 left_mouse_button_clicked = False
@@ -476,6 +481,7 @@ def ControlHelp():
         states["settingsVisible"] = False
         states["saveVisible"] = False
         states["loadVisible"] = False
+        states["newProjectVisble"] = False
         pygame.draw.rect(screen, theme["Selected"], help_button)
         screen.blit(help_button_img, (1220-80, 15))
         pygame.draw.rect(screen, theme["HelpWindow"], pygame.Rect(230, 52, 1040, 658))
@@ -523,6 +529,7 @@ def ControlSettings():
         states["saveVisible"] = False
         states["helpVisible"] = False
         states["loadVisible"] = False
+        states["newProjectVisble"] = False
         pygame.draw.rect(screen, theme["Selected"], settings_button)
         screen.blit(settings_button_img, (1220 - 15, 15))
         pygame.draw.rect(screen, theme["HelpWindow"], pygame.Rect(230, 52, 1040, 658))
@@ -637,6 +644,7 @@ key_is_pressed = False
 set_project_name = False
 no_clicked = False
 ready_to_save = True
+
 def ControlSave():
     global save_is_pressed, input_active, actual_key, project_name, key_is_pressed, set_project_name, \
         project_names, ready_to_save, no_clicked
@@ -649,6 +657,7 @@ def ControlSave():
         states["settingsVisible"] = False
         states["helpVisible"] = False
         states["loadVisible"] = False
+        states["newProjectVisble"] = False
         pygame.draw.rect(screen, theme["Selected"], save_button)
         screen.blit(save_button_img, (709, 15))
         pygame.draw.rect(screen, theme["HelpWindow"], pygame.Rect(230, 52, 1040, 658))
@@ -723,6 +732,8 @@ def ControlSave():
             screen.blit(yes_button_img, (243, 260))
             pygame.draw.rect(screen, theme["Background"], decline_overwrite_project_button)
             screen.blit(no_button_img, (310, 260))
+            accept_overwrite_project_button.y = 261
+            decline_overwrite_project_button.y = 261
             if CheckLeftMouseButtonCollision(accept_overwrite_project_button):
                 if left_mouse_button_clicked:
                     pygame.draw.rect(screen, theme["Selected"], accept_overwrite_project_button)
@@ -734,6 +745,7 @@ def ControlSave():
                     pygame.draw.rect(screen, theme["Selected"], decline_overwrite_project_button)
                     screen.blit(no_button_img, (310, 260))
                     no_clicked = True
+                    ready_to_save = True
 
 
 def ReadProjects():
@@ -771,19 +783,26 @@ def SaveProject():
     if ready_to_save:
         with open(path, 'w') as json_file:
             json.dump(data_to_save, json_file)
+        states["saveVisible"] = False
+        pygame.display.set_caption(project_name+' - Mini-Sequencer')
 
+scroll_divisions = []
 
 def ControlLoad():
     global load_is_pressed, project_names, project_buttons, selected_project, errors
     if CheckLeftMouseButtonCollision(load_button):
         if left_mouse_button_clicked:
             states["loadVisible"] = True
+            ReadProjects()
         if right_mouse_button_clicked:
+            project_names = []
+            selected_project = None
             states["loadVisible"] = False
     if states["loadVisible"]:
         states["settingsVisible"] = False
         states["helpVisible"] = False
         states["saveVisible"] = False
+        states["newProjectVisble"] = False
         pygame.draw.rect(screen, theme["Selected"], load_button)
         screen.blit(load_button_img, (709+65, 15))
         pygame.draw.rect(screen, theme["HelpWindow"], pygame.Rect(230, 52, 1040, 658))
@@ -808,22 +827,24 @@ def ControlLoad():
         ReadProjects()
 
         # Display list of available projects
-        if len(project_names) < 14:
-            for i, proj in enumerate(project_names):
-                rect = pygame.Rect(240, 62+i*45, 450, 40)
-                if rect not in project_buttons:
-                    project_buttons.append(rect)
-                pygame.draw.rect(screen, theme["HelpWindow"], rect)
-                if selected_project is not None and rect == selected_project[1]:
-                    pygame.draw.rect(screen, theme["Selected"], rect)
-                if CheckLeftMouseButtonCollision(rect):
-                    if left_mouse_button_clicked:
-                        selected_project = [proj, rect]
-                font_text = font_24.render(proj, True, theme["bar"])
-                screen.blit(font_text, (245, 68+i*45))
-        else:
-            for i, proj in enumerate(project_names):
-                if i < 14:
+        # Compute scroll divisions
+        qty = ceil(len(project_names) / 14)
+        if qty > 0:
+            jump = int(scroll_area.height / qty)
+            global scroll_divisions
+            for i in range(qty+1):
+                if scroll_area.top + i * jump not in scroll_divisions:
+                    scroll_divisions.append(scroll_area.top + i * jump)
+            # Divide list of project names
+            lists = []
+            for i in range(qty):
+                if i == qty-1:
+                    lists.append(project_names[i*14:])
+                else:
+                    lists.append(project_names[i * 14:(i + 1) * 14])
+
+            if len(project_names) < 14:
+                for i, proj in enumerate(project_names):
                     rect = pygame.Rect(240, 62+i*45, 450, 40)
                     if rect not in project_buttons:
                         project_buttons.append(rect)
@@ -835,8 +856,41 @@ def ControlLoad():
                             selected_project = [proj, rect]
                     font_text = font_24.render(proj, True, theme["bar"])
                     screen.blit(font_text, (245, 68+i*45))
-            pygame.draw.rect(screen, theme["HelpWindow"], scroll_area)
-            pygame.draw.rect(screen, theme["bar"], select_project_scroll_button)
+            else:
+                pygame.draw.rect(screen, theme["bar"], select_project_scroll_button)
+                pygame.draw.rect(screen, theme["HelpWindow"], scroll_area)
+                for i in range(qty):
+                    # print(scroll_divisions, select_project_scroll_button.y)
+                    if scroll_divisions[i+1] >= select_project_scroll_button.y >= scroll_divisions[i]:
+                        for j,list in enumerate(lists[i]):
+                            rect = pygame.Rect(240, 62+j*45, 450, 40)
+                            if rect not in project_buttons:
+                                project_buttons.append(rect)
+                            pygame.draw.rect(screen, theme["HelpWindow"], rect)
+                            if selected_project is not None and rect == selected_project[1]:
+                                pygame.draw.rect(screen, theme["Selected"], rect)
+                            if CheckLeftMouseButtonCollision(rect):
+                                if left_mouse_button_clicked:
+                                    selected_project = [list, rect]
+                            font_text = font_24.render(list, True, theme["bar"])
+                            screen.blit(font_text, (245, 68+j*45))
+
+            # for i, proj in enumerate(project_names):
+            #     if i < 14:
+            #         rect = pygame.Rect(240, 62+i*45, 450, 40)
+            #         if rect not in project_buttons:
+            #             project_buttons.append(rect)
+            #         pygame.draw.rect(screen, theme["HelpWindow"], rect)
+            #         if selected_project is not None and rect == selected_project[1]:
+            #             pygame.draw.rect(screen, theme["Selected"], rect)
+            #         if CheckLeftMouseButtonCollision(rect):
+            #             if left_mouse_button_clicked:
+            #                 selected_project = [proj, rect]
+            #         font_text = font_24.render(proj, True, theme["bar"])
+            #         screen.blit(font_text, (245, 68+i*45))
+
+
+
             mouse_pos = pygame.mouse.get_pos()
             if CheckLeftMouseButtonCollision(select_project_scroll_button):
                 if left_mouse_button_clicked:
@@ -848,6 +902,7 @@ def ControlLoad():
                 select_project_scroll_button.bottom = 700
             if select_project_scroll_button.top < 62:
                 select_project_scroll_button.top = 62
+
         # Load project if load_project button is clicked or display error
         if CheckLeftMouseButtonCollision(load_file_button):
             if left_mouse_button_clicked:
@@ -861,9 +916,70 @@ def ControlLoad():
                     load_is_pressed = True
 
 
+def ControlNewProject():
+    global chosen_samples, project_name, loop_buttons_4bar, loop_buttons_8bar
+    pygame.draw.rect(screen, theme["Main"], pygame.Rect(448, 10, 130, 40))
+    pygame.draw.rect(screen, theme["Second"], new_project_button)
+    screen.blit(new_project_button_img, (453,15))
+    if CheckLeftMouseButtonCollision(new_project_button):
+        if left_mouse_button_clicked:
+            states["newProjectVisble"] = True
+    if CheckLeftMouseButtonCollision(new_project_button):
+        if right_mouse_button_clicked:
+            states["newProjectVisble"] = False
+    if states["newProjectVisble"]:
+        states["settingsVisible"] = False
+        states["helpVisible"] = False
+        states["saveVisible"] = False
+        states["loadVisible"] = False
+        pygame.draw.rect(screen, theme["Selected"], new_project_button)
+        screen.blit(new_project_button_img, (453, 15))
+        pygame.draw.rect(screen, theme["HelpWindow"], pygame.Rect(230, 52, 1040, 658))
+        ending_text = "[ To go back to the main screen click the right mouse button on the New project button ]"
+        font_text = font_16.render(ending_text, True, theme["bar"])
+        screen.blit(font_text, (680, 65))
+        pygame.draw.rect(screen, theme["Second"], pygame.Rect(238, 115, 500, 160))
+        save_text = "Do you want to start a new project?"
+        font_text = font_24.render(save_text, True, theme["bar"])
+        screen.blit(font_text, (243, 120))
+        save_text = "( All unsaved changes will be lost) "
+        font_text = font_24.render(save_text, True, theme["bar"])
+        screen.blit(font_text, (243, 150))
+        accept_overwrite_project_button.y = 190
+        decline_overwrite_project_button.y = 190
+        pygame.draw.rect(screen, theme["Background"], accept_overwrite_project_button)
+        screen.blit(yes_button_img, (243, 189))
+        pygame.draw.rect(screen, theme["Background"], decline_overwrite_project_button)
+        screen.blit(no_button_img, (310, 189))
+        if CheckLeftMouseButtonCollision(accept_overwrite_project_button):
+            if left_mouse_button_clicked:
+                pygame.draw.rect(screen, theme["Selected"], accept_overwrite_project_button)
+                screen.blit(yes_button_img, (243, 189))
+                for sample in sample_list:
+                    sample.rectsPos = []
+                chosen_samples = []
+                for button in loop_buttons_4bar:
+                    button.clicked = False
+                    button.color = theme["bar"]
+                for button in loop_buttons_8bar:
+                    button.clicked = False
+                    button.color = theme["bar"]
+                states["length"] = 4
+                project_name = ""
+                pygame.display.set_caption('Mini-Sequencer')
+                states["newProjectVisble"] = False
+
+        if CheckLeftMouseButtonCollision(decline_overwrite_project_button):
+            if left_mouse_button_clicked:
+                pygame.draw.rect(screen, theme["Selected"], decline_overwrite_project_button)
+                screen.blit(no_button_img, (310, 189))
+                states["newProjectVisble"] = False
+
+
+
 
 def LoadProject():
-    global selected_project, states, six_qty, beats_qty, bars_qty, line, bar_line
+    global selected_project, states, six_qty, beats_qty, bars_qty, line, bar_line, project_name
     with open('saved/'+str(selected_project[0])+'.json') as json_file:
         data = json.load(json_file)
     states["loadVisible"] = False
@@ -922,8 +1038,8 @@ def LoadProject():
                             if rect.x == pos:
                                 sample.rectsPos.append(rect)
                     chosen_samples.append(sample)
-
-
+    project_name = selected_project[0]
+    pygame.display.set_caption(project_name + ' - Mini-Sequencer')
 
 
 # main program loop
@@ -1060,6 +1176,8 @@ while True:
     ControlLoad()
 
     ControlErrorDisplay()
+
+    ControlNewProject()
 
     pygame.display.update()
 
