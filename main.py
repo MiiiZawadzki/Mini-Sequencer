@@ -8,6 +8,7 @@ from random import randint
 import json
 import re
 from math import ceil
+
 # config
 clock = pygame.time.Clock()
 pygame.mixer.pre_init(44100, 16, 2, 1024)
@@ -16,7 +17,7 @@ pygame.init()
 pygame.display.set_caption('Mini-Sequencer')
 screen = pygame.display.set_mode((1280, 720))
 
-
+# classes
 class Object:
     def __init__(self, rect , color):
         self.rect = rect
@@ -45,8 +46,8 @@ class Sample:
         self.sound = pygame.mixer.Sound(self.path)
         self.rectsPos = []
         # self.color = (randint(100,120),randint(150,250),randint(200,255))
-        c = randint(100, 120)
-        self.color = (110, c, c)
+        c = randint(160, 180)
+        self.color = (66, c, c)
         self.rects_list = []
 
 # color themes
@@ -54,7 +55,10 @@ dark_theme = {"Background":(25, 29, 36), "Main": (42, 49, 60), "Second":(33, 39,
               "six":(0, 66, 102), "beat": (0, 133, 204), "bar": (153, 219, 255), "HelpWindow":(42, 48, 60)}
 light_theme = {"Background":(160, 160, 160), "Main": (173, 173, 173), "Second":(150, 150, 150), "Selected":(148, 95, 158),
               "six":(230, 230, 230), "beat": (112, 51, 83), "bar": (106, 17, 69), "HelpWindow":(120, 120, 120)}
+light_theme = {"Background":(87, 127, 158), "Main": (110, 147, 175), "Second":(97, 137, 168), "Selected":(148, 95, 158),
+              "six":(230, 230, 230), "beat": (112, 51, 83), "bar": (0, 27, 41), "HelpWindow":(110, 147, 175)}
 theme = dark_theme
+
 # buttons
 play_button = pygame.Rect(590, 15, 30, 30)
 pause_button = pygame.Rect(625, 15, 30, 30)
@@ -162,6 +166,11 @@ errors = {"sampleLimit": [False, False], "notSelectedProject": [False, False], "
 left_mouse_button_clicked = False
 right_mouse_button_clicked = False
 
+sample_list = []
+chosen_samples = []
+playobjs = []
+project_names = []
+
 # fonts
 pygame.font.init()
 font = pygame.font.SysFont('calibri', 32)
@@ -169,11 +178,6 @@ font_16 = pygame.font.SysFont('calibri', 16)
 font_24 = pygame.font.SysFont('calibri', 24)
 font_text = font.render("1.1", True, theme["bar"])
 actual_key = None
-
-sample_list = []
-chosen_samples = []
-playobjs = []
-project_names = []
 
 # playing config
 step_size = 0.125
@@ -185,15 +189,16 @@ bars_qty = 5
 async def ControlPlayState():
     if states["isPlaying"]:
         if states["ended"]:
-            states["ended"] = False
-            states["isPlaying"] = True
-            line.rect.x = 238
-            line.position_x = 238
-            bar_line.rect.x = 238
-            bar_line.position_x = 238
-            states["actualSix"] = 1
-            states["actualBeats"] = 1
-            states["actualBars"] = 1
+            if line.rect.x != 238:
+                states["ended"] = False
+                states["isPlaying"] = True
+                line.rect.x = 238
+                line.position_x = 238
+                bar_line.rect.x = 238
+                bar_line.position_x = 238
+                states["actualSix"] = 1
+                states["actualBeats"] = 1
+                states["actualBars"] = 1
         if states["actualSix"] > 4:
             states["actualBeats"] += 1
             states["actualSix"] = 1
@@ -207,13 +212,14 @@ async def ControlPlayState():
             states["ended"] = True
             if CheckLeftMouseButtonCollision(play_button):
                 if left_mouse_button_clicked:
-                    line.rect.x = 238
-                    line.position_x = 238
-                    bar_line.rect.x = 238
-                    bar_line.position_x = 238
-                    states["actualSix"] = 1
-                    states["actualBeats"] = 1
-                    states["actualBars"] = 1
+                    if line.rect.x != 238:
+                        line.rect.x = 238
+                        line.position_x = 238
+                        bar_line.rect.x = 238
+                        bar_line.position_x = 238
+                        states["actualSix"] = 1
+                        states["actualBeats"] = 1
+                        states["actualBars"] = 1
         await asyncio.sleep(step_size)
 
 # Move bars and increment sixteenhs
@@ -253,6 +259,7 @@ async def ControlTopButtons():
         if left_mouse_button_clicked and not states["helpVisible"] and not states["settingsVisible"] \
                 and not states["saveVisible"] and not states["loadVisible"]:
             states["restartButtonClicked"] = True
+            states["ended"] = False
             states["isPlaying"] = False
             line.rect.x = 238
             line.position_x = 238
@@ -430,6 +437,7 @@ def LoopSelection():
                 bar_line.rect.x = 238
                 bar_line.position_x = 238
 
+# Control selecting between 4 and 8 bar length
 def ControlSelectingLength():
     global step_size, six_qty, beats_qty, bars_qty
     length_changed = False
@@ -468,7 +476,7 @@ def ControlSelectingLength():
             beats_qty = 33
             bars_qty = 9
 
-
+# Control Help Section
 def ControlHelp():
     if CheckLeftMouseButtonCollision(help_button):
         if left_mouse_button_clicked:
@@ -485,6 +493,7 @@ def ControlHelp():
         pygame.draw.rect(screen, theme["Selected"], help_button)
         screen.blit(help_button_img, (1220-80, 15))
         pygame.draw.rect(screen, theme["HelpWindow"], pygame.Rect(230, 52, 1040, 658))
+        pygame.draw.rect(screen, theme["Second"], pygame.Rect(233, 390, 1034, 316))
         font_text = font.render("About:", True, theme["bar"])
         screen.blit(font_text, (235, 57))
         texts = ["This program is simple audio sequencer that uses samples placed in 'samples' directory.",
@@ -504,18 +513,18 @@ def ControlHelp():
             last_y_pos =  100+i*30
         font_text = font.render("Legend:", True, theme["bar"])
         screen.blit(font_text, (235, last_y_pos+60))
-        icons_text = [[loop_icon_img, "- Loop mode active icon:"],
-                      [sample_warning_icon_img, "- There are over 15 wav files in the sample directory:"],
-                      [lines_visible_icon_img, "- Guides line are visible:"]]
+        icons_text = [[loop_icon_img, "- Loop mode active icon:", 465],
+                      [sample_warning_icon_img, "- There are over 15 wav files in the sample directory:", 740],
+                      [lines_visible_icon_img, "- Guides line are visible:", 465]]
         for i, text in enumerate(icons_text):
             font_text = font_24.render(text[1], True, theme["bar"])
             screen.blit(font_text, (235, last_y_pos+100+i*60))
-            screen.blit(text[0], (235+len(text[1])*10, last_y_pos+85+i*60))
+            screen.blit(text[0], (text[2], last_y_pos+85+i*60))
         ending_text = "[ To go back to the main screen click the right mouse button on the Help button ]"
         font_text = font_16.render(ending_text, True, theme["bar"])
         screen.blit(font_text, (720, 65))
 
-
+# Control Settings section
 def ControlSettings():
     global theme
     if CheckLeftMouseButtonCollision(settings_button):
@@ -566,7 +575,7 @@ def ControlSettings():
                 for button in buttons:
                     button.color = theme["bar"]
 
-
+# Control Displaying errors on screen
 def ControlErrorDisplay():
     error_pos = (1000, 100)
     error_close_rect.y = 100
@@ -611,11 +620,12 @@ def ControlErrorDisplay():
             pygame.draw.rect(screen, theme["Selected"], error_area)
             font_text = font_16.render("[x]", True, (0, 0, 0))
             screen.blit(font_text, (1242, error_pos[1]))
-            DisplayErrorMessage("Too long project name (max 40 characters).")
+            DisplayErrorMessage("Too long project name (max 25 characters).")
             if CheckLeftMouseButtonCollision(error_close_rect):
                 if left_mouse_button_clicked:
                     states["errorVisible"] = False
 
+# Display message
 def DisplayErrorMessage(message):
     error_pos1 = (1005, 116)
     error_pos2 = (1008, 132)
@@ -645,6 +655,7 @@ set_project_name = False
 no_clicked = False
 ready_to_save = True
 
+# Control saving projects
 def ControlSave():
     global save_is_pressed, input_active, actual_key, project_name, key_is_pressed, set_project_name, \
         project_names, ready_to_save, no_clicked
@@ -680,7 +691,7 @@ def ControlSave():
             color = theme["Selected"]
             if actual_key is not None:
                 if not key_is_pressed:
-                    if len(project_name) < 40:
+                    if len(project_name) < 25:
                         if re.findall("^([a-z0-9])$", chr(actual_key)):
                             project_name += chr(actual_key)
                     else:
@@ -696,6 +707,8 @@ def ControlSave():
             if not set_project_name:
                 project_name = "new_project"
                 set_project_name = True
+        if len(project_name) > 25:
+            project_name = project_name[:24]
         font_text = font_24.render(project_name, True, theme["bar"])
         screen.blit(font_text, (240, 126))
         pygame.draw.line(screen, color,(238,122), (238+500, 122))
@@ -747,7 +760,7 @@ def ControlSave():
                     no_clicked = True
                     ready_to_save = True
 
-
+# Read projects from 'saved' directory
 def ReadProjects():
     global project_names
     projects = glob("./saved/*.json")
@@ -757,7 +770,7 @@ def ReadProjects():
         if short_name[0] not in project_names:
             project_names.append(short_name[0])
 
-
+# Save project to 'saved' directory
 def SaveProject():
     global states, loop_buttons_8bar, loop_buttons_4bar, chosen_samples, project_name, ready_to_save
     length = states["length"]
@@ -788,6 +801,7 @@ def SaveProject():
 
 scroll_divisions = []
 
+# Control loading projects from 'saved' directory
 def ControlLoad():
     global load_is_pressed, project_names, project_buttons, selected_project, errors
     if CheckLeftMouseButtonCollision(load_button):
@@ -811,7 +825,12 @@ def ControlLoad():
         screen.blit(font_text, (720, 65))
         load_text = "Selected project: "
         if selected_project is not None:
-            load_text += selected_project[0]
+            new_name = selected_project[0]
+            if len(new_name) > 25:
+                new_name = new_name[:25]
+                new_name = new_name[:-3]
+                new_name += '...'
+            load_text += new_name
         font_text = font_24.render(load_text, True, theme["bar"])
         screen.blit(font_text, (720, 100))
 
@@ -854,7 +873,12 @@ def ControlLoad():
                     if CheckLeftMouseButtonCollision(rect):
                         if left_mouse_button_clicked:
                             selected_project = [proj, rect]
-                    font_text = font_24.render(proj, True, theme["bar"])
+                    new_name = proj
+                    if len(proj) > 25:
+                        new_name = proj[:25]
+                        new_name = new_name[:-3]
+                        new_name +='...'
+                    font_text = font_24.render(new_name, True, theme["bar"])
                     screen.blit(font_text, (245, 68+i*45))
             else:
                 pygame.draw.rect(screen, theme["bar"], select_project_scroll_button)
@@ -915,7 +939,7 @@ def ControlLoad():
                         LoadProject()
                     load_is_pressed = True
 
-
+# Control creating new projects
 def ControlNewProject():
     global chosen_samples, project_name, loop_buttons_4bar, loop_buttons_8bar
     pygame.draw.rect(screen, theme["Main"], pygame.Rect(448, 10, 130, 40))
@@ -975,9 +999,7 @@ def ControlNewProject():
                 screen.blit(no_button_img, (310, 189))
                 states["newProjectVisble"] = False
 
-
-
-
+# Load project
 def LoadProject():
     global selected_project, states, six_qty, beats_qty, bars_qty, line, bar_line, project_name
     with open('saved/'+str(selected_project[0])+'.json') as json_file:
