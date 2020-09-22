@@ -155,6 +155,7 @@ yes_button_img.set_colorkey((255, 255, 255))
 new_project_button_img = pygame.image.load("img/new_project_button.png")
 new_project_button_img.set_colorkey((255, 255, 255))
 
+bar_display = pygame.Rect(238, 65, 1024, 20)
 
 # program objects
 states = {"isPlaying": False, "ended": False, "playButtonClicked": False,
@@ -899,22 +900,6 @@ def ControlLoad():
                             font_text = font_24.render(list, True, theme["bar"])
                             screen.blit(font_text, (245, 68+j*45))
 
-            # for i, proj in enumerate(project_names):
-            #     if i < 14:
-            #         rect = pygame.Rect(240, 62+i*45, 450, 40)
-            #         if rect not in project_buttons:
-            #             project_buttons.append(rect)
-            #         pygame.draw.rect(screen, theme["HelpWindow"], rect)
-            #         if selected_project is not None and rect == selected_project[1]:
-            #             pygame.draw.rect(screen, theme["Selected"], rect)
-            #         if CheckLeftMouseButtonCollision(rect):
-            #             if left_mouse_button_clicked:
-            #                 selected_project = [proj, rect]
-            #         font_text = font_24.render(proj, True, theme["bar"])
-            #         screen.blit(font_text, (245, 68+i*45))
-
-
-
             mouse_pos = pygame.mouse.get_pos()
             if CheckLeftMouseButtonCollision(select_project_scroll_button):
                 if left_mouse_button_clicked:
@@ -1063,7 +1048,6 @@ def LoadProject():
     project_name = selected_project[0]
     pygame.display.set_caption(project_name + ' - Mini-Sequencer')
 
-
 # main program loop
 while True:
     # draw background
@@ -1133,7 +1117,7 @@ while True:
     # middle rect section
     pygame.draw.rect(screen, theme["Main"], pygame.Rect(230, 60, 1040, 650))
     # draw bar display
-    pygame.draw.rect(screen, theme["Second"], pygame.Rect(238, 65, 1024, 20))
+    pygame.draw.rect(screen, theme["Second"], bar_display)
 
     # draw main middle container
     pygame.draw.rect(screen, theme["Second"], pygame.Rect(238, 100, 1024, 600))
@@ -1180,7 +1164,19 @@ while True:
     pygame.draw.rect(screen, line.color, line.rect)
     # draw playing bar line
     pygame.draw.rect(screen, bar_line.color, bar_line.rect)
-
+    # Control moving bar line on ruler
+    bar_line.rect.width = 2
+    if CheckLeftMouseButtonCollision(bar_display):
+        if left_mouse_button_clicked:
+            states["isPlaying"] = False
+            pos = pygame.mouse.get_pos()[0]
+            if (pos - 238)%16 != 0:
+                new_pos = pos + (16-(pos - 238)%16)
+                if pos < 246:
+                    new_pos = 238
+                bar_line.rect.x = new_pos
+                line.position_x = bar_line.rect.x
+                line.rect.x = bar_line.rect.x
     pygame.draw.rect(screen, theme["Second"], four_bar_button)
     screen.blit(four_bar_button_img, (320, 15))
 
