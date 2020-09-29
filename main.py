@@ -15,7 +15,11 @@ pygame.mixer.pre_init(44100, 16, 2, 1024)
 pygame.mixer.init()
 pygame.init()
 pygame.display.set_caption('Mini-Sequencer')
+program_icon = pygame.image.load('img/program_icon.png')
+program_icon.set_colorkey((255, 255, 255))
+pygame.display.set_icon(program_icon)
 screen = pygame.display.set_mode((1280, 720))
+version = "1.1.2"
 
 # classes
 class Object:
@@ -91,9 +95,15 @@ selected_project = None
 input_project_name_area = pygame.Rect(238, 122, 500, 32)
 input_active = False
 project_name = ""
+
 accept_overwrite_project_button = pygame.Rect(244, 261, 58, 28)
 decline_overwrite_project_button = pygame.Rect(311, 261, 58, 28)
+
 new_project_button = pygame.Rect(454, 16, 118, 28)
+
+slow_button = pygame.Rect(270, 221, 58, 28)
+normal_button = pygame.Rect(360, 221, 58, 28)
+fast_button = pygame.Rect(450, 221, 58, 28)
 
 # screen objects
 line = Line(pygame.Rect(238, 100, 1, 600), (155, 0, 0), 238)
@@ -155,6 +165,15 @@ yes_button_img.set_colorkey((255, 255, 255))
 new_project_button_img = pygame.image.load("img/new_project_button.png")
 new_project_button_img.set_colorkey((255, 255, 255))
 
+slow_button_img = pygame.image.load("img/90_button.png")
+slow_button_img.set_colorkey((255, 255, 255))
+
+normal_button_img = pygame.image.load("img/120_button.png")
+normal_button_img.set_colorkey((255, 255, 255))
+
+fast_button_img = pygame.image.load("img/160_button.png")
+fast_button_img.set_colorkey((255, 255, 255))
+
 bar_display = pygame.Rect(238, 65, 1024, 20)
 
 # program objects
@@ -163,7 +182,8 @@ states = {"isPlaying": False, "ended": False, "playButtonClicked": False,
           "sampleOverload": False, "linesVisible": False, "length": 4, "helpVisible": False, "settingsVisible": False,
           "errorVisible": False, "saveVisible": False, "loadVisible": False, "newProjectVisble": False}
 # {"nameOfError": [is error active, was displayed]}
-errors = {"sampleLimit": [False, False], "notSelectedProject": [False, False], "tooLongProjectName": [False, False]}
+errors = {"sampleLimit": [False, False], "notSelectedProject": [False, False], "tooLongProjectName": [False, False],
+          "notLoadedSamples": [False, False]}
 left_mouse_button_clicked = False
 right_mouse_button_clicked = False
 
@@ -223,6 +243,7 @@ async def ControlPlayState():
                         states["actualBars"] = 1
         await asyncio.sleep(step_size)
 
+
 # Move bars and increment sixteenhs
 async def ControlPlaying():
     if states["isPlaying"] and not states["helpVisible"] and not states["settingsVisible"] \
@@ -232,6 +253,7 @@ async def ControlPlaying():
         bar_line.position_x += (64/states["length"])
         bar_line.rect.x += (64/states["length"])
         states["actualSix"] += 1
+
 
 # check if mouse collide with rect given as parameter
 def CheckLeftMouseButtonCollision(rect):
@@ -270,6 +292,7 @@ async def ControlTopButtons():
             states["actualBeats"] = 1
             states["actualBars"] = 1
 
+
 # Display Bars, beats and sixteenhs on screen
 def ControlTimer():
     global font_text
@@ -278,6 +301,7 @@ def ControlTimer():
     screen.blit(font_text, (230, 15))
 
 
+# Playing and stoping audio, selecting sample rects
 def ControlSampleSection():
     if states["sampleOverload"]:
         screen.blit(sample_warning_icon_img, (1100-70, 5))
@@ -327,7 +351,6 @@ def ControlSampleSection():
             sample.sound.stop()
 
 
-
 # Read samples from catalog and append it to sample_list
 def ReadSamples():
     # read samples from directory
@@ -348,7 +371,9 @@ def ReadSamples():
 
         errors["sampleLimit"][0] = states["sampleOverload"]
 
+
 ReadSamples()
+
 
 # after removing sample from chosen samples update sample rects y position
 def UpdateRects(deleted_sample):
@@ -366,6 +391,7 @@ def UpdateRects(deleted_sample):
 def ClearSamples():
     global sample_list
     sample_list = []
+
 
 # Control selecting samples in left panel
 def ChooseSamples():
@@ -411,6 +437,7 @@ def ChooseSamples():
                 font_text = font_24.render(str(list[1].short_name), True, theme["bar"])
             screen.blit(font_text, list[1].name_pos)
 
+
 # Control loop options
 def LoopSelection():
     buttons = loop_buttons_4bar
@@ -437,6 +464,7 @@ def LoopSelection():
                 line.position_x = 238
                 bar_line.rect.x = 238
                 bar_line.position_x = 238
+
 
 # Control selecting between 4 and 8 bar length
 def ControlSelectingLength():
@@ -477,6 +505,7 @@ def ControlSelectingLength():
             beats_qty = 33
             bars_qty = 9
 
+
 # Control Help Section
 def ControlHelp():
     if CheckLeftMouseButtonCollision(help_button):
@@ -494,7 +523,7 @@ def ControlHelp():
         pygame.draw.rect(screen, theme["Selected"], help_button)
         screen.blit(help_button_img, (1220-80, 15))
         pygame.draw.rect(screen, theme["HelpWindow"], pygame.Rect(230, 52, 1040, 658))
-        pygame.draw.rect(screen, theme["Second"], pygame.Rect(233, 390, 1034, 316))
+        pygame.draw.rect(screen, theme["Second"], pygame.Rect(233, 395, 1034, 311))
         font_text = font.render("About:", True, theme["bar"])
         screen.blit(font_text, (235, 57))
         texts = ["This program is simple audio sequencer that uses samples placed in 'samples' directory.",
@@ -506,6 +535,7 @@ def ControlHelp():
                  "- Limit of samples in directory is 15 files.",
                  "- To refresh samples use button placed at bottom of the screen.",
                  "- To activate loop mode, select the area you want to loop, by clicking on light squares above ruler display.",
+                 "- To change color theme or project BPM go to Settings tab."
                  ]
         last_y_pos = 0
         for i, text in enumerate(texts):
@@ -524,6 +554,7 @@ def ControlHelp():
         ending_text = "[ To go back to the main screen click the right mouse button on the Help button ]"
         font_text = font_16.render(ending_text, True, theme["bar"])
         screen.blit(font_text, (720, 65))
+
 
 # Control Settings section
 def ControlSettings():
@@ -575,6 +606,36 @@ def ControlSettings():
                     buttons = loop_buttons_8bar
                 for button in buttons:
                     button.color = theme["bar"]
+        font_text = font.render("Tempo (BPM): ", True, theme["bar"])
+        screen.blit(font_text, (235, 170))
+        pygame.draw.rect(screen, theme["Second"], slow_button)
+        screen.blit(slow_button_img, (269, 220))
+        pygame.draw.rect(screen, theme["Second"], normal_button)
+        screen.blit(normal_button_img, (359, 220))
+        pygame.draw.rect(screen, theme["Second"], fast_button)
+        screen.blit(fast_button_img, (449, 220))
+        global step_size
+        if step_size == 0.125:
+            pygame.draw.rect(screen, theme["Selected"], normal_button)
+            screen.blit(normal_button_img, (359, 220))
+        if step_size == 0.09375:
+            pygame.draw.rect(screen, theme["Selected"], fast_button)
+            screen.blit(fast_button_img, (449, 220))
+        if step_size == 0.1665:
+            pygame.draw.rect(screen, theme["Selected"], slow_button)
+            screen.blit(slow_button_img, (269, 220))
+        if CheckLeftMouseButtonCollision(slow_button):
+            if left_mouse_button_clicked:
+                step_size = 0.1665
+        if CheckLeftMouseButtonCollision(normal_button):
+            if left_mouse_button_clicked:
+                step_size = 0.125
+        if CheckLeftMouseButtonCollision(fast_button):
+            if left_mouse_button_clicked:
+                step_size = 0.09375
+        font_text = font_24.render("Ver. "+version, True, theme["bar"])
+        screen.blit(font_text, (1170, 680))
+
 
 # Control Displaying errors on screen
 def ControlErrorDisplay():
@@ -625,6 +686,21 @@ def ControlErrorDisplay():
             if CheckLeftMouseButtonCollision(error_close_rect):
                 if left_mouse_button_clicked:
                     states["errorVisible"] = False
+    if errors["notLoadedSamples"][0]:
+        error_area.x = error_pos[0]
+        error_area.y = error_pos[1]
+        if not errors["notLoadedSamples"][1]:
+            states["errorVisible"] = True
+            errors["notLoadedSamples"][1] = True
+        if states["errorVisible"]:
+            pygame.draw.rect(screen, theme["Selected"], error_area)
+            font_text = font_16.render("[x]", True, (0, 0, 0))
+            screen.blit(font_text, (1242, error_pos[1]))
+            DisplayErrorMessage("Some samples were not found.")
+            if CheckLeftMouseButtonCollision(error_close_rect):
+                if left_mouse_button_clicked:
+                    states["errorVisible"] = False
+
 
 # Display message
 def DisplayErrorMessage(message):
@@ -649,12 +725,14 @@ def DisplayErrorMessage(message):
     font_text = font_16.render(text_second_line, True, (0, 0, 0))
     screen.blit(font_text, error_pos2)
 
+
 save_is_pressed = False
 load_is_pressed = False
 key_is_pressed = False
 set_project_name = False
 no_clicked = False
 ready_to_save = True
+
 
 # Control saving projects
 def ControlSave():
@@ -761,6 +839,7 @@ def ControlSave():
                     no_clicked = True
                     ready_to_save = True
 
+
 # Read projects from 'saved' directory
 def ReadProjects():
     global project_names
@@ -770,6 +849,7 @@ def ReadProjects():
         short_name = name.split(".json")
         if short_name[0] not in project_names:
             project_names.append(short_name[0])
+
 
 # Save project to 'saved' directory
 def SaveProject():
@@ -800,7 +880,9 @@ def SaveProject():
         states["saveVisible"] = False
         pygame.display.set_caption(project_name+' - Mini-Sequencer')
 
+
 scroll_divisions = []
+
 
 # Control loading projects from 'saved' directory
 def ControlLoad():
@@ -882,8 +964,8 @@ def ControlLoad():
                     font_text = font_24.render(new_name, True, theme["bar"])
                     screen.blit(font_text, (245, 68+i*45))
             else:
-                pygame.draw.rect(screen, theme["bar"], select_project_scroll_button)
                 pygame.draw.rect(screen, theme["HelpWindow"], scroll_area)
+                pygame.draw.rect(screen, theme["bar"], select_project_scroll_button)
                 for i in range(qty):
                     # print(scroll_divisions, select_project_scroll_button.y)
                     if scroll_divisions[i+1] >= select_project_scroll_button.y >= scroll_divisions[i]:
@@ -923,6 +1005,7 @@ def ControlLoad():
                     else:
                         LoadProject()
                     load_is_pressed = True
+
 
 # Control creating new projects
 def ControlNewProject():
@@ -984,6 +1067,7 @@ def ControlNewProject():
                 screen.blit(no_button_img, (310, 189))
                 states["newProjectVisble"] = False
 
+
 # Load project
 def LoadProject():
     global selected_project, states, six_qty, beats_qty, bars_qty, line, bar_line, project_name
@@ -1026,9 +1110,11 @@ def LoadProject():
             else:
                 button.clicked = False
                 button.color = theme["bar"]
+    samples_loaded =[]
     for dict in data["sample_list"]:
         for sample in sample_list:
             if sample.name == dict:
+                samples_loaded.append(sample.name)
                 if states["length"] == 4:
                     for i in range(64):
                         sample.rects_list.append(pygame.Rect(238 + i * 16, 125 + len(chosen_samples) * 40, 15, 10))
@@ -1045,8 +1131,12 @@ def LoadProject():
                             if rect.x == pos:
                                 sample.rectsPos.append(rect)
                     chosen_samples.append(sample)
+    if len(samples_loaded) != len(data["sample_list"]):
+        errors["notLoadedSamples"][0] = True
+        errors["notLoadedSamples"][1] = False
     project_name = selected_project[0]
     pygame.display.set_caption(project_name + ' - Mini-Sequencer')
+
 
 # main program loop
 while True:
@@ -1170,13 +1260,25 @@ while True:
         if left_mouse_button_clicked:
             states["isPlaying"] = False
             pos = pygame.mouse.get_pos()[0]
-            if (pos - 238)%16 != 0:
-                new_pos = pos + (16-(pos - 238)%16)
-                if pos < 246:
+            if (pos - 238)%(1024/(six_qty-1)) != 0:
+                new_pos = pos + ((1024/(six_qty-1))-(pos - 238)%(1024/(six_qty-1)))
+                if states["length"] == 4:
+                    if pos < 246:
+                        new_pos = 238
+                elif pos < 242:
                     new_pos = 238
                 bar_line.rect.x = new_pos
                 line.position_x = bar_line.rect.x
                 line.rect.x = bar_line.rect.x
+                if states["length"] == 4:
+                    states["actualSix"] = int(((((new_pos-238)/16)%4)+1))
+                    states["actualBeats"] = int(((((new_pos - 238) / 64) % 4) + 1))
+                    states["actualBars"] = int(((((new_pos - 238) / 256) % 5) + 1))
+                else:
+                    states["actualSix"] = int(((((new_pos-238)/8)%4)+1))
+                    states["actualBeats"] = int(((((new_pos - 238) / 32) % 4) + 1))
+                    states["actualBars"] = int(((((new_pos - 238) / 128) % 9) + 1))
+
     pygame.draw.rect(screen, theme["Second"], four_bar_button)
     screen.blit(four_bar_button_img, (320, 15))
 
