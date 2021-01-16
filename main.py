@@ -183,7 +183,7 @@ states = {"isPlaying": False, "ended": False, "playButtonClicked": False,
           "errorVisible": False, "saveVisible": False, "loadVisible": False, "newProjectVisble": False}
 # {"nameOfError": [is error active, was displayed]}
 errors = {"sampleLimit": [False, False], "notSelectedProject": [False, False], "tooLongProjectName": [False, False],
-          "notLoadedSamples": [False, False]}
+          "notLoadedSamples": [False, False], "projectDontExists": [False, False]}
 left_mouse_button_clicked = False
 right_mouse_button_clicked = False
 
@@ -672,6 +672,20 @@ def ControlErrorDisplay():
             if CheckLeftMouseButtonCollision(error_close_rect):
                 if left_mouse_button_clicked:
                     states["errorVisible"] = False
+    if errors["projectDontExists"][0]:
+        error_area.x = error_pos[0]
+        error_area.y = error_pos[1]
+        if not errors["notSelectedProject"][1]:
+            states["errorVisible"] = True
+            errors["notSelectedProject"][1] = True
+        if states["errorVisible"]:
+            pygame.draw.rect(screen, theme["Selected"], error_area)
+            font_text = font_16.render("[x]", True, (0, 0, 0))
+            screen.blit(font_text, (1242, error_pos[1]))
+            DisplayErrorMessage("This project no longer exists.")
+            if CheckLeftMouseButtonCollision(error_close_rect):
+                if left_mouse_button_clicked:
+                    states["errorVisible"] = False
     if errors["tooLongProjectName"][0]:
         error_area.x = error_pos[0]
         error_area.y = error_pos[1]
@@ -1070,72 +1084,77 @@ def ControlNewProject():
 
 # Load project
 def LoadProject():
-    global selected_project, states, six_qty, beats_qty, bars_qty, line, bar_line, project_name
-    with open('saved/'+str(selected_project[0])+'.json') as json_file:
-        data = json.load(json_file)
-    states["loadVisible"] = False
-    states["length"] = data["Length"]
-    global chosen_samples
-    for sample in chosen_samples:
-        sample.rectsPos = []
-        sample.rects_list = []
-    chosen_samples = []
-    states["isPlaying"] = False
-    states["actualBars"] = 1
-    states["actualSix"] = 1
-    states["actualBeats"] = 1
-    line.rect.x = 238
-    line.position_x = 238
-    bar_line.rect.x = 238
-    bar_line.position_x = 238
-    if states["length"] == 4:
-        six_qty = 65
-        beats_qty = 17
-        bars_qty = 5
-        for button in loop_buttons_4bar:
-            if button.rect.x == data["loop_pos"]:
-                button.clicked = True
-                button.color = theme["Selected"]
-            else:
-                button.clicked = False
-                button.color = theme["bar"]
-    if states["length"] == 8:
-        six_qty = 129
-        beats_qty = 33
-        bars_qty = 9
-        for button in loop_buttons_8bar:
-            if button.rect.x == data["loop_pos"]:
-                button.clicked = True
-                button.color = theme["Selected"]
-            else:
-                button.clicked = False
-                button.color = theme["bar"]
-    samples_loaded =[]
-    for dict in data["sample_list"]:
-        for sample in sample_list:
-            if sample.name == dict:
-                samples_loaded.append(sample.name)
-                if states["length"] == 4:
-                    for i in range(64):
-                        sample.rects_list.append(pygame.Rect(238 + i * 16, 125 + len(chosen_samples) * 40, 15, 10))
-                    for pos in data["sample_list"][dict]:
-                        for rect in sample.rects_list:
-                            if rect.x == pos:
-                                sample.rectsPos.append(rect)
-                    chosen_samples.append(sample)
-                if states["length"] == 8:
-                    for i in range(128):
-                        sample.rects_list.append(pygame.Rect(238 + i * 8, 125 + len(chosen_samples) * 40, 7, 5))
-                    for pos in data["sample_list"][dict]:
-                        for rect in sample.rects_list:
-                            if rect.x == pos:
-                                sample.rectsPos.append(rect)
-                    chosen_samples.append(sample)
-    if len(samples_loaded) != len(data["sample_list"]):
-        errors["notLoadedSamples"][0] = True
-        errors["notLoadedSamples"][1] = False
-    project_name = selected_project[0]
-    pygame.display.set_caption(project_name + ' - Mini-Sequencer')
+    global selected_project, states, six_qty, beats_qty, bars_qty, line, bar_line, project_name, errors, project_names
+    try:
+        with open('saved/'+str(selected_project[0])+'.json') as json_file:
+            data = json.load(json_file)
+        states["loadVisible"] = False
+        states["length"] = data["Length"]
+        global chosen_samples
+        for sample in chosen_samples:
+            sample.rectsPos = []
+            sample.rects_list = []
+        chosen_samples = []
+        states["isPlaying"] = False
+        states["actualBars"] = 1
+        states["actualSix"] = 1
+        states["actualBeats"] = 1
+        line.rect.x = 238
+        line.position_x = 238
+        bar_line.rect.x = 238
+        bar_line.position_x = 238
+        if states["length"] == 4:
+            six_qty = 65
+            beats_qty = 17
+            bars_qty = 5
+            for button in loop_buttons_4bar:
+                if button.rect.x == data["loop_pos"]:
+                    button.clicked = True
+                    button.color = theme["Selected"]
+                else:
+                    button.clicked = False
+                    button.color = theme["bar"]
+        if states["length"] == 8:
+            six_qty = 129
+            beats_qty = 33
+            bars_qty = 9
+            for button in loop_buttons_8bar:
+                if button.rect.x == data["loop_pos"]:
+                    button.clicked = True
+                    button.color = theme["Selected"]
+                else:
+                    button.clicked = False
+                    button.color = theme["bar"]
+        samples_loaded =[]
+        for dict in data["sample_list"]:
+            for sample in sample_list:
+                if sample.name == dict:
+                    samples_loaded.append(sample.name)
+                    if states["length"] == 4:
+                        for i in range(64):
+                            sample.rects_list.append(pygame.Rect(238 + i * 16, 125 + len(chosen_samples) * 40, 15, 10))
+                        for pos in data["sample_list"][dict]:
+                            for rect in sample.rects_list:
+                                if rect.x == pos:
+                                    sample.rectsPos.append(rect)
+                        chosen_samples.append(sample)
+                    if states["length"] == 8:
+                        for i in range(128):
+                            sample.rects_list.append(pygame.Rect(238 + i * 8, 125 + len(chosen_samples) * 40, 7, 5))
+                        for pos in data["sample_list"][dict]:
+                            for rect in sample.rects_list:
+                                if rect.x == pos:
+                                    sample.rectsPos.append(rect)
+                        chosen_samples.append(sample)
+        if len(samples_loaded) != len(data["sample_list"]):
+            errors["notLoadedSamples"][0] = True
+            errors["notLoadedSamples"][1] = False
+        project_name = selected_project[0]
+        pygame.display.set_caption(project_name + ' - Mini-Sequencer')
+    except FileNotFoundError:
+        project_names = []
+        ReadProjects()
+        errors["projectDontExists"][0] = True
 
 
 # main program loop
