@@ -8,7 +8,6 @@ Project is created with:
 * Asyncio
 
 ## Key features
-Project is created with:
 * Allows to arrange a sequence of 15 sounds
 * Changeable length of sequence
 * Two color themes
